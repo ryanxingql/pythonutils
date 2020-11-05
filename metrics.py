@@ -4,6 +4,10 @@ import numpy as np
 from scipy import stats
 
 class PCC():
+    """Pearson correlation coefficient.
+    
+    update: 20-11-5
+    """
     def __init__(self):
         self.help = (
             'Pearson correlation coefficient measures linear correlation '
@@ -26,13 +30,14 @@ class PCC():
         Return:
             (cc value, p-value)
 
-        Formula: https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.pearsonr.html?highlight=pearson#scipy.stats.pearsonr
+        Formula: https://docs.scipy.org/doc/scipy/reference/generated
+        /scipy.stats.pearsonr.html?highlight=pearson#scipy.stats.pearsonr
 
-        Note: x/y should not be a constant! Else, the sigma will be zero, and the cc value will be not defined (nan).
+        Note: x/y should not be a constant! Else, the sigma will be zero, 
+        and the cc value will be not defined (nan).
         """
         return stats.pearsonr(x.reshape((-1,)), y.reshape((-1,)))
     def _test(self):
         x = np.array([[3,4],[1,1]],dtype=np.float32)
         y = x + np.ones((2,2),dtype=np.float32)
         print(self.cal_pcc_two_imgs(x,y))
-        
