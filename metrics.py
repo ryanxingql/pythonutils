@@ -1,13 +1,8 @@
 import numpy as np
-
-
 from scipy import stats
 
 class PCC():
-    """Pearson correlation coefficient.
-    
-    update: 20-11-5
-    """
+    """Pearson correlation coefficient."""
     def __init__(self):
         self.help = (
             'Pearson correlation coefficient measures linear correlation '
@@ -18,6 +13,7 @@ class PCC():
             '-1: total negative linear correlation. '
             'See: https://en.wikipedia.org/wiki/Pearson_correlation_coefficient'
             )
+    
     def cal_pcc_two_imgs(self, x, y):
         """Calculate Pearson correlation coefficient of two images.
         
@@ -37,6 +33,7 @@ class PCC():
         and the cc value will be not defined (nan).
         """
         return stats.pearsonr(x.reshape((-1,)), y.reshape((-1,)))
+    
     def _test(self):
         x = np.array([[3,4],[1,1]],dtype=np.float32)
         y = x + np.ones((2,2),dtype=np.float32)

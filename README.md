@@ -6,8 +6,7 @@ Feel free to contact: ryanxingql@gmail.com.
 
 ## Content
 
-- dataset
-  - DiskIODataset
-  - LMDBIODataset
-- metrics
-  - PCC: Pearson correlation coefficient
+- conversion, e.g., YCbCr <-> RGB.
+- dataset, e.g., dataset using LMDB.
+- metrics, e.g., PSNR.
+- system, e.g., get formatted time data.

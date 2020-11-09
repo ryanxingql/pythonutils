@@ -12,8 +12,6 @@ def _paired_random_crop(img_gts, img_lqs, gt_patch_size, scale=1):
     scale: cropped lq patch can be smaller than the cropped gt patch.
 
     List in, list out; ndarray in, ndarray out.
-
-    v0.0
     """
     if not isinstance(img_gts, list):
         img_gts = [img_gts]
@@ -52,8 +50,6 @@ def _augment(imgs, if_flip=True, if_rot=True):
     
     Flipping is applied both x-axis and y-axis.
     Rotation can be 0, 90, 180 or 270 degrees.
-    
-    v0.0
     """
     def _main(img):
         if if_flip:
@@ -66,7 +62,6 @@ def _augment(imgs, if_flip=True, if_rot=True):
         imgs = [imgs]
     if_flip = if_flip and random.random() < 0.5
     if_rot = if_rot and random.random() < 0.5
-    print(if_flip, if_rot)
     rot_code = random.choice([
         0,  # 90 degrees
         1,  # 180 degrees
@@ -81,8 +76,6 @@ def _totensor(imgs, if_bgr2rgb=True, if_float32=True):
     """(H W [BGR]) uint8 ndarray -> ([RGB] H W) float32 tensor
     
     List in, list out; ndarray in, ndarray out.
-
-    v0.0
     """
     def _main(img):
         if if_bgr2rgb:
@@ -97,29 +90,11 @@ def _totensor(imgs, if_bgr2rgb=True, if_float32=True):
     else:
         return _main(imgs)
 
-def _read_img(img_path):
-    """Read im -> (H W [BGR]) uint8
-
-    v0.0
-    """
-    img_np = cv2.imread(str(img_path))
-    return img_np
-
-def _read_img_bytes(img_bytes):
-    """
-    unfinished
-    """
-    img_np = np.frombuffer(img_bytes, np.uint8)
-    img_np = cv2.imdecode(img_np, cv2.IMREAD_COLOR)
-    img_np = (img_np / 255.).astype(np.float32)
-    return img_np
-
 class DiskIODataset(data.Dataset):
     """Dataset using disk IO.
+    
     gt_path and lq_path: relative paths to the dataset folder.
     opt_aug: True for training data, and False for test data.
-
-    v0.0
     """
     def __init__(self, gt_path, lq_path, aug):
         super().__init__()
@@ -149,9 +124,15 @@ class DiskIODataset(data.Dataset):
 
         self.aug = aug
 
+    @staticmethod
+    def _read_img(img_path):
+        """Read im -> (H W [BGR]) uint8."""
+        img_np = cv2.imread(str(img_path))
+        return img_np
+
     def __getitem__(self, idx):
-        img_gt = _read_img(self.data_info['gt_path'][idx])  # (H W [BGR]) uint8
-        img_lq = _read_img(self.data_info['lq_path'][idx])
+        img_gt = self._read_img(self.data_info['gt_path'][idx])  # (H W [BGR]) uint8
+        img_lq = self._read_img(self.data_info['lq_path'][idx])
 
         # augmentation for training data
         if self.aug['if_aug']:
@@ -205,6 +186,16 @@ class LMDBIODataset(data.Dataset):
             ]
         self.io_opts_dict['client_keys'] = ['lq', 'gt']
 
+    @staticmethod
+    def _read_img_bytes(img_bytes):
+        """
+        unfinished
+        """
+        img_np = np.frombuffer(img_bytes, np.uint8)
+        img_np = cv2.imdecode(img_np, cv2.IMREAD_COLOR)
+        img_np = (img_np / 255.).astype(np.float32)
+        return img_np
+
     def __getitem__(self, index):
         if self.file_client is None:
             self.file_client = FileClient(
@@ -213,24 +204,24 @@ class LMDBIODataset(data.Dataset):
 
         key = self.keys[index]
         img_bytes = self.file_client.get(key, 'gt')
-        img_gt = _read_img_bytes(img_bytes)  # (H W [BGR])
+        img_gt = self._read_img_bytes(img_bytes)  # (H W [BGR])
         img_bytes = self.file_client.get(key, 'lq')
-        img_lq = _read_img_bytes(img_bytes)  # (H W [BGR])
+        img_lq = self._read_img_bytes(img_bytes)  # (H W [BGR])
 
         # randomly crop
         gt_size = self.opts_dict['gt_size']
-        img_gt, img_lq = paired_random_crop(
+        img_gt, img_lq = _paired_random_crop(
             img_gt, img_lq, gt_size,
             )
 
         # flip, rotate
         img_batch = [img_lq, img_gt] # gt joint augmentation with lq
-        img_batch = augment(
+        img_batch = _augment(
             img_batch, self.opts_dict['use_flip'], self.opts_dict['use_rot']
             )
 
         # to tensor
-        img_batch = totensor(img_batch)  # ([RGB] H W)
+        img_batch = _totensor(img_batch)  # ([RGB] H W)
         img_lq, img_gt = img_batch[:]
 
         return {
