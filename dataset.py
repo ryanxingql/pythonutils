@@ -1,9 +1,13 @@
+import math
 import random
 import torch
 import numpy as np
 from pathlib import Path
-from torch.utils import data as data 
 from cv2 import cv2
+from functools import partial
+from torch.utils.data import Dataset
+from torch.utils.data.sampler import Sampler
+from torch.utils.data import DataLoader
 from .conversion import bgr2rgb
 
 def _paired_random_crop(img_gts, img_lqs, gt_patch_size, scale=1):
@@ -90,7 +94,7 @@ def _totensor(imgs, if_bgr2rgb=True, if_float32=True):
     else:
         return _main(imgs)
 
-class DiskIODataset(data.Dataset):
+class DiskIODataset(Dataset):
     """Dataset using disk IO.
     
     gt_path and lq_path: relative paths to the dataset folder.
@@ -104,12 +108,12 @@ class DiskIODataset(data.Dataset):
         self.lq_path = Path(lq_path)
 
         # record data info
-        self.data_info = {
-            'gt_path': [],
-            'lq_path': [],
-            'idx': [],
-            'name': [],
-            }
+        self.data_info = dict(
+            gt_path=[],
+            lq_path=[],
+            idx=[],
+            name=[],
+            )
 
         gt_lst = sorted(list(self.gt_path.glob('*.png')))
         self.gt_num = len(gt_lst)
@@ -148,17 +152,17 @@ class DiskIODataset(data.Dataset):
         img_batch = [img_lq, img_gt]
         img_batch = _totensor(img_batch)  # ([RGB] H W) float32
 
-        return {
-            'lq': img_batch[0],
-            'gt': img_batch[1],
-            'name': self.data_info['name'][idx], 
-            'idx': self.data_info['idx'][idx], 
-            }
+        return dict(
+            lq=img_batch[0],
+            gt=img_batch[1],
+            name=self.data_info['name'][idx], 
+            idx=self.data_info['idx'][idx], 
+            )
 
     def __len__(self):
         return self.gt_num
 
-class LMDBIODataset(data.Dataset):
+class LMDBIODataset(Dataset):
     """
     unfinished
     """
@@ -231,4 +235,173 @@ class LMDBIODataset(data.Dataset):
 
     def __len__(self):
         return len(self.keys)
+
+class DistSampler(Sampler):
+    """Distributed sampler that loads data from a subset of the dataset.
+
+    Actually just generate idxs.
+    Why enlarge? We only shuffle the dataloader before each epoch.
+        Enlarging dataset can save the shuffling time.
+    Support we have im00, im01, im02. We set ratio=3 and we have 2 workers.
+        Enlarged ds: im00 01 02 00 01 02 00 01 02
+        Worker 0: im00, im02, im01, im00, im02
+        Worker 1: im01, im00, im02, im01, (im00)
+    Enlargement is compatible with augmentation.
+        Each sampling is different due to the random augmentation.
+    Modified from torch.utils.data.distributed.DistributedSampler.
+
+    Args:
+        dataset size.
+        num_replicas (int | None): Number of processes participating in
+            the training. It is usually the world_size.
+        rank (int | None): Rank of the current process within num_replicas.
+        ratio (int): Enlarging ratio.
+    """
+    def __init__(
+            self, ds_size, num_replicas=None, rank=None, ratio=1
+            ):
+        self.ds_size = ds_size
+        self.num_replicas = num_replicas
+        self.rank = rank
+        self.epoch = 0
+        # enlarged by ratio, and then divided by num_replicas
+        self.num_samples = math.ceil(
+            ds_size * ratio / self.num_replicas
+            )
+        self.total_size = self.num_samples * self.num_replicas
+
+    def set_epoch(self, epoch):
+        """
+        For distributed training, shuffle the subset of each dataloader.
+        For single-gpu training, no shuffling.
+        """
+        self.epoch = epoch
+
+    def __iter__(self):
+        g = torch.Generator()
+        g.manual_seed(self.epoch)  # shuffle based on self.epoch
+        idxs = torch.randperm(self.total_size, generator=g).tolist()
+        idxs = [idx % self.ds_size for idx in idxs]
+        idxs = idxs[self.rank: self.total_size: self.num_replicas]
+        return iter(idxs)
+
+    def __len__(self):
+        return self.num_samples  # for one rank
+
+def create_dataloader(
+        if_train,
+        dataset,
+        num_worker=None,
+        batch_size=None,
+        sampler=None,
+        rank=None,
+        seed=None,
+        ):
+    """Create dataloader.
+    
+    Dataloader is created for each rank.
+        So num_worker and batch_size here are for one rank (one gpu).
+    """
+    if if_train:
+        dataloader_args = dict(
+            dataset=dataset,
+            batch_size=batch_size,
+            num_workers=num_worker,
+            sampler=sampler,
+            shuffle=False,  # sampler will shuffle at __iter__
+            drop_last=True,
+            pin_memory=True,  # must be True for prefetcher
+            )
+        if sampler is None:
+            dataloader_args['shuffle'] = True
+        dataloader_args['worker_init_fn'] = partial(
+            _worker_init_fn, 
+            num_workers=num_worker, 
+            rank=rank,
+            seed=seed
+            )
+    else:
+        dataloader_args = dict(
+            dataset=dataset,
+            batch_size=1,
+            num_workers=0,
+            shuffle=False,
+            pin_memory=True,
+            )
+    return DataLoader(**dataloader_args)
+
+def _worker_init_fn(worker_id, num_workers, rank, seed):
+    """For reproducibility, fix seed of each worker.
+    
+    Seeds for different workers of all ranks are different.
+    Suppose we have 2 ranks and 16 workers per rank.
+        Rank 0:
+            worker 0: seed + 16 * 0 + 0
+            worker 1: seed + 16 * 0 + 1
+            ...
+            worker 15: seed + 16 * 0 + 15
+        Rank 1:
+            worker 0: seed + 16 * 1 + 0
+            worker 1: seed + 16 * 1 + 1
+            ...
+            worker 15: seed + 16 * 1 + 15        
+    """
+    worker_seed = seed + num_workers * rank + worker_id
+    np.random.seed(worker_seed)
+    random.seed(worker_seed)
+
+class CPUPrefetcher():
+    """CPU prefetcher."""
+    def __init__(self, loader):
+        self.ori_loader = loader
+        self.loader = iter(loader)
+
+    def next(self):
+        try:
+            return next(self.loader)
+        except StopIteration:
+            return None
+
+    def reset(self):
+        self.loader = iter(self.ori_loader)
+
+class CUDAPrefetcher():
+    """CUDA prefetcher.
+
+    Ref: https://github.com/NVIDIA/apex/issues/304#
+    It may consums more GPU memory.
+    
+    Args:
+        loader: Dataloader.
+        opt (dict): Options.
+    """
+    def __init__(self, loader, rank):
+        self.ori_loader = loader
+        self.loader = iter(loader)
+        self.stream = torch.cuda.Stream()
+        self.rank = rank
+        self.preload()
+
+    def preload(self):
+        try:
+            self.batch = next(self.loader)  # self.batch is a dict
+        except StopIteration:
+            self.batch = None
+            return None
+        # put tensors to gpu
+        with torch.cuda.stream(self.stream):
+            for k, v in self.batch.items():
+                if torch.is_tensor(v):
+                    self.batch[k] = self.batch[k].to(
+                        device=self.rank, non_blocking=True)
+
+    def next(self):
+        torch.cuda.current_stream().wait_stream(self.stream)
+        batch = self.batch
+        self.preload()
+        return batch
+
+    def reset(self):
+        self.loader = iter(self.ori_loader)
+        self.preload()
     
