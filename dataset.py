@@ -141,7 +141,7 @@ class DiskIODataset(Dataset):
         # augmentation for training data
         if self.aug['if_aug']:
             img_gt, img_lq = _paired_random_crop(
-                img_gt, img_lq, self.aug['gt_size'],
+                img_gt, img_lq, self.aug['gt_sz'],
                 )
             img_batch = [img_lq, img_gt] # gt is augmented jointly with lq
             img_batch = _augment(
@@ -213,7 +213,7 @@ class LMDBIODataset(Dataset):
         img_lq = self._read_img_bytes(img_bytes)  # (H W [BGR])
 
         # randomly crop
-        gt_size = self.opts_dict['gt_size']
+        gt_size = self.opts_dict['gt_sz']
         img_gt, img_lq = _paired_random_crop(
             img_gt, img_lq, gt_size,
             )

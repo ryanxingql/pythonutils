@@ -26,9 +26,8 @@ def arg2dict():
     
     with open(args.opt_path, 'r') as fp:
         opts_dict = yaml.load(fp, Loader=yaml.FullLoader)
-    
-    opts_dict['train']['rank'] = args.local_rank
-    return opts_dict
+
+    return opts_dict, args.local_rank
 
 def mkdir_archived(log_dir):
     if log_dir.exists():  # if exists, rename the existing folder
