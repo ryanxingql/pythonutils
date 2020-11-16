@@ -12,6 +12,8 @@ def rgb2bgr(im):
     
     Input/Return: (..., C).
     """
+    nc = im.shape[-1]
+    assert (nc == 1 or nc == 3), 'Input format: (..., C)!'
     im = im[..., ::-1]
     return im
 
@@ -20,6 +22,8 @@ def bgr2rgb(im):
     
     Input/Return: (..., C).
     """
+    nc = im.shape[-1]
+    assert (nc == 1 or nc == 3), 'Input format: (..., C)!'
     im = im[..., ::-1]
     return im
 
