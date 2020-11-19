@@ -6,11 +6,13 @@ Feel free to contact: ryanxingql@gmail.com.
 
 ## Content
 
-- **conversion**, e.g., YCbCr <-> RGB conversion.
-- **dataset**, e.g., dataset using LMDB.
-- **deep learning**, e.g., multi-processing.
-- **metrics**, e.g., PSNR.
-- **system**, e.g., return formatted time data.
+- **algorithm**: basic template for deep learning algorithms.
+- **conversion**: common-used tools for format/color space conversion, e.g., YCbCr <-> RGB conversion.
+- **dataset**: basic datasets and common-used functions, e.g., LMDB dataset.
+- **deep learning**: common-used tools for deep learning, e.g., multi-processing.
+- **metrics**: common-used metrics, e.g., PSNR.
+- **network**: basic template for deep learning networks.
+- **system**: common-used tools for system manipulation, e.g., return formatted time data.
 
 ## Principle
 
