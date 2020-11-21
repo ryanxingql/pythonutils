@@ -49,7 +49,7 @@ def _paired_random_crop(img_gts, img_lqs, gt_patch_size, scale=1):
         img_lqs = img_lqs[0]
     return img_gts, img_lqs
 
-def _augment(imgs, if_flip=True, if_rot=True):
+def _augment(img_lst, if_flip=True, if_rot=True):
     """Apply the same flipping and (or) rotation to all the imgs.
     
     Flipping is applied both x-axis and y-axis.
@@ -62,8 +62,8 @@ def _augment(imgs, if_flip=True, if_rot=True):
             cv2.rotate(img, rot_code, img)
         return img
 
-    if not isinstance(imgs, list):
-        imgs = [imgs]
+    if not isinstance(img_lst, list):
+        img_lst = [img_lst]
     if_flip = if_flip and random.random() < 0.5
     if_rot = if_rot and random.random() < 0.5
     rot_code = random.choice([
@@ -71,12 +71,12 @@ def _augment(imgs, if_flip=True, if_rot=True):
         1,  # 180 degrees
         2,  # 270 degrees
         ])
-    imgs = [_main(img) for img in imgs]
-    if len(imgs) == 1:
-        imgs = imgs[0]
-    return imgs
+    img_lst = [_main(img) for img in img_lst]
+    if len(img_lst) == 1:
+        img_lst = img_lst[0]
+    return img_lst
 
-def _totensor(imgs, if_bgr2rgb=True, if_float32=True):
+def _totensor(img_lst, if_bgr2rgb=True, if_float32=True):
     """(H W [BGR]) uint8 ndarray -> ([RGB] H W) float32 tensor
     
     List in, list out; ndarray in, ndarray out.
@@ -84,15 +84,15 @@ def _totensor(imgs, if_bgr2rgb=True, if_float32=True):
     def _main(img):
         if if_bgr2rgb:
             img = bgr2rgb(img)
-        img = torch.from_numpy(img.transpose(2, 0, 1))
+        img = torch.from_numpy(img.transpose(2, 0, 1).copy())
         if if_float32:
             img = img.float() / 255.
         return img
 
-    if isinstance(imgs, list):
-        return [_main(img) for img in imgs]
+    if isinstance(img_lst, list):
+        return [_main(img) for img in img_lst]
     else:
-        return _main(imgs)
+        return _main(img_lst)
 
 class DistSampler(Sampler):
     """Distributed sampler that loads data from a subset of the dataset.
@@ -312,18 +312,19 @@ class DiskIODataset(Dataset):
             img_gt, img_lq = _paired_random_crop(
                 img_gt, img_lq, self.aug['gt_sz'],
                 )
-            img_batch = [img_lq, img_gt] # gt is augmented jointly with lq
-            img_batch = _augment(
-                img_batch, self.aug['if_flip'], self.aug['if_rot']
+            img_lst = [img_lq, img_gt] # gt is augmented jointly with lq
+            img_lst = _augment(
+                img_lst, self.aug['if_flip'], self.aug['if_rot']
                 )
+            img_lq, img_gt = img_lst[:]
 
         # ndarray to tensor
-        img_batch = [img_lq, img_gt]
-        img_batch = _totensor(img_batch)  # ([RGB] H W) float32
+        img_lst = [img_lq, img_gt]
+        img_lst = _totensor(img_lst)  # ([RGB] H W) float32
 
         return dict(
-            lq=img_batch[0],
-            gt=img_batch[1],
+            lq=img_lst[0],
+            gt=img_lst[1],
             name=self.data_info['name'][idx], 
             idx=self.data_info['idx'][idx], 
             )
