@@ -48,3 +48,10 @@ def set_random_seed(seed):
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
+
+def print_n_log(msg, log_fp):
+    """Display on screen and also log in file."""
+    msg += '\n'
+    print(msg)
+    log_fp.write(msg + '\n')
+    log_fp.flush()

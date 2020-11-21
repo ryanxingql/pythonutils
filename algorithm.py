@@ -5,6 +5,9 @@ class BaseAlg():
     def create_model(self):
         pass
 
+    def print_net(self):
+        pass
+
     def create_optimizer(self):
         pass
 

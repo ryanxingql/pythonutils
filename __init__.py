@@ -7,7 +7,7 @@ from .dataset import (
 from .deep_learning import init_dist
 from .metrics import PCC
 from .network import BaseNet
-from .system import get_timestr, arg2dict, mkdir_archived, set_random_seed
+from .system import get_timestr, arg2dict, mkdir_archived, set_random_seed, print_n_log
 
 __all__ = [
     'BaseAlg',
@@ -23,5 +23,5 @@ __all__ = [
     ]+ [
     'BaseNet',
     ] + [
-    'get_timestr', 'arg2dict','mkdir_archived', 'set_random_seed',
+    'get_timestr', 'arg2dict','mkdir_archived', 'set_random_seed', 'print_n_log',
     ]
