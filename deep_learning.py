@@ -7,7 +7,7 @@ import torch.multiprocessing as tmp
 # ===
 
 def init_dist(local_rank=0, backend='nccl'):
-    tmp.set_start_method('spawn')
+    tmp.set_start_method('spawn', force=True)
     torch.cuda.set_device(local_rank)
     dist.init_process_group(backend=backend)
 
