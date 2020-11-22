@@ -53,9 +53,10 @@ def arg2dict():
 
     return opts_dict, args.local_rank
 
-def print_n_log(msg, log_fp):
+def print_n_log(msg, log_fp, if_new_line=True):
     """Display on screen and also log in file."""
-    msg += '\n'
+    if if_new_line:
+        msg += '\n'
     print(msg)
     log_fp.write(msg + '\n')
     log_fp.flush()
