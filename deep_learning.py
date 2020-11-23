@@ -20,17 +20,19 @@ def init_dist(local_rank=0, backend='nccl'):
 # Optimizer
 # ===
 
-def return_optimizer(optim_type, params, optim_opts):
-    assert (optim_type in ['Adam']), '> Not supported!'
-    if optim_type == 'Adam':
-        betas = optim_opts['betas']
-        betas = [float(beta) for beta in betas.strip('()').split(',')]  # (beta1, beta2) in YMAL is in string format
-        optim_opts['betas'] = betas
-        return torch.optim.Adam(params, **optim_opts)
+def return_optimizer(name, params, opts):
+    assert (name in ['Adam']), '> Not supported!'
+    if name == 'Adam':
+        return torch.optim.Adam(params, **opts)
 
 # ===
 # Loss
 # ===
+
+def return_loss_func(name, opts):
+    assert (name in ['CharbonnierLoss', 'GANLoss', 'LPIPS', 'VGGLoss', 'PSNRLoss']), '> Not supported!'
+    loss_func_cls = globals()[name]
+    return loss_func_cls(**opts)
 
 class CharbonnierLoss(torch.nn.Module):
     def __init__(self, eps=1e-6):
