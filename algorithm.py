@@ -8,7 +8,6 @@ class BaseAlg():
     def __init__(self):
         super().__init__()
         
-        self.rank = 0
         self.msg_lst = []
 
     def create_model(self, model_cls, if_train, opts_dict, rank):
@@ -23,8 +22,8 @@ class BaseAlg():
             self.model.module_lst[mod_key] = DDP(self.model.module_lst[mod_key], device_ids=[rank])
 
     def print_net(self, log_fp):
-        for msg_key in self.msg_lst:
-           print_n_log(self.msg_lst[msg_key], log_fp)
+        for msg_key in self.model.msg_lst:
+           print_n_log(self.model.msg_lst[msg_key], log_fp)
 
     def create_loss_func(self, opts_dict, if_use_cuda=True, rank=None):
         """
