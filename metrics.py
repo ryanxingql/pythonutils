@@ -38,10 +38,3 @@ class PCC():
         x = np.array([[3,4],[1,1]],dtype=np.float32)
         y = x + np.ones((2,2),dtype=np.float32)
         print(self.cal_pcc_two_imgs(x,y))
-
-# Perceptualloss (VGG)
-# CharbonnierLoss
-# PSNR
-# LPIPS
-# GAN loss?
-# https://github.com/RyanXingQL/SubjectiveQE-ESRGAN/blob/main/utils/deep_learning.py

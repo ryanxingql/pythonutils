@@ -4,10 +4,15 @@ from .dataset import (
     DiskIODataset, LMDBIODataset, DistSampler, create_dataloader,
     CPUPrefetcher,
     )
-from .deep_learning import init_dist, return_optimizer
+from .deep_learning import (
+    init_dist, return_optimizer, CharbonnierLoss, GANLoss, LPIPS, VGGLoss,
+    PSNRLoss
+    )
 from .metrics import PCC
 from .network import BaseNet
-from .system import get_timestr, arg2dict, mkdir_archived, set_random_seed, print_n_log, Timer
+from .system import (
+    get_timestr, arg2dict, mkdir_archived, set_random_seed, print_n_log, Timer
+    )
 
 __all__ = [
     'BaseAlg',
@@ -17,7 +22,8 @@ __all__ = [
     'DiskIODataset', 'LMDBIODataset', 'DistSampler', 'create_dataloader',
     'CPUPrefetcher',
     ] + [
-    'init_dist', 'return_optimizer',
+    'init_dist', 'return_optimizer', 'CharbonnierLoss', 'GANLoss', 'LPIPS',
+    'VGGLoss', 'PSNRLoss'
     ] + [
     'PCC',
     ]+ [
