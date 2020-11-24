@@ -5,7 +5,7 @@ from .dataset import (
     CPUPrefetcher,
     )
 from .deep_learning import (
-    init_dist, return_loss_func, return_optimizer
+    init_dist, return_loss_func, return_optimizer, return_scheduler,
     )
 from .metrics import PCC
 from .network import BaseNet
@@ -21,7 +21,7 @@ __all__ = [
     'DiskIODataset', 'LMDBIODataset', 'DistSampler', 'create_dataloader',
     'CPUPrefetcher',
     ] + [
-    'init_dist', 'return_loss_func', 'return_optimizer',
+    'init_dist', 'return_loss_func', 'return_optimizer', 'return_scheduler',
     ] + [
     'PCC',
     ]+ [

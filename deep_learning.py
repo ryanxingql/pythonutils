@@ -17,20 +17,13 @@ def init_dist(local_rank=0, backend='nccl'):
     dist.init_process_group(backend=backend)
 
 # ===
-# Optimizer
-# ===
-
-def return_optimizer(name, params, opts):
-    assert (name in ['Adam']), '> Not supported!'
-    if name == 'Adam':
-        return torch.optim.Adam(params, **opts)
-
-# ===
 # Loss
 # ===
 
+loss_lst = ['CharbonnierLoss', 'GANLoss', 'LPIPS', 'VGGLoss', 'PSNRLoss']
+
 def return_loss_func(name, opts):
-    assert (name in ['CharbonnierLoss', 'GANLoss', 'LPIPS', 'VGGLoss', 'PSNRLoss']), '> Not supported!'
+    assert (name in loss_lst), '> Not supported!'
     loss_func_cls = globals()[name]
     return loss_func_cls(**opts)
 
@@ -320,3 +313,58 @@ class PSNRLoss(torch.nn.Module):
         mse = self.mse_func(x, y)
         psnr = 10 * math.log10(1 / mse.item())
         return psnr
+
+# ===
+# Optimizer
+# ===
+
+optim_lst = ['Adam']
+
+def return_optimizer(name, params, opts):
+    assert (name in optim_lst), '> Not supported!'
+    if name == 'Adam':
+        return torch.optim.Adam(params, **opts)
+
+# ===
+# Scheduler
+# ===
+
+scheduler_lst = ['CosineAnnealingLR', 'CosineAnnealingWarmRestarts', 'MultiStepLR']
+
+def return_scheduler(name, optim, opts):
+    """
+    CosineAnnealingLR:
+        Real Cosine: Cosine down, Cosine up. Cosine cycle is 2*T_max.
+        opts:
+            T_max: half iters of one cycle.
+            eta_min=0
+            last_epoch=-1: resuming state. -1 indicates training from the stracth.
+                Will automatically +1 after each .step()
+
+    CosineAnnealingWarmRestarts:
+        lr drops from lr_init to eta_min within T_i, and then repeat this process.
+        Could be called after each epoch*/iter. Default to restart after each epoch/iter.
+        opts:
+            T_0: the first cycle before the first restart.
+            T_mult=1: T_i = T_{i-1}*T_mult
+            eta_min=0
+            last_epoch=-1
+        Example: the first cycle is 10 epochs, and then 20, 40, 80, ... epochs.
+            Then T_0, T_mult should be 10 and 2.
+
+    https://zhuanlan.zhihu.com/p/261134624
+    
+    MultiStepLR:
+        lr drops by the factor gamma after each milestone.
+        opts:
+            milestones
+            gamma=0.1
+            last_epoch=-1
+    """
+    assert (name in scheduler_lst), '> Not supported!'
+    if name == 'CosineAnnealingWarmRestarts':
+        return torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optim, **opts)
+    elif name == 'CosineAnnealingLR':
+        return torch.optim.lr_scheduler.CosineAnnealingLR(optim, **opts)
+    elif name == 'MultiStepLR':
+        return torch.optim.lr_scheduler.MultiStepLR(optim, **opts)
