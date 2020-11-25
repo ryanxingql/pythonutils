@@ -234,11 +234,10 @@ class CUDAPrefetcher():
         loader: Dataloader.
         opt (dict): Options.
     """
-    def __init__(self, loader, rank):
+    def __init__(self, loader):
         self.ori_loader = loader
         self.loader = iter(loader)
         self.stream = torch.cuda.Stream()
-        self.rank = rank
         self.preload()
 
     def preload(self):
@@ -251,8 +250,7 @@ class CUDAPrefetcher():
         with torch.cuda.stream(self.stream):
             for k, v in self.batch.items():
                 if torch.is_tensor(v):
-                    self.batch[k] = self.batch[k].to(
-                        device=self.rank, non_blocking=True)
+                    self.batch[k] = self.batch[k].cuda(non_blocking=True)
 
     def next(self):
         torch.cuda.current_stream().wait_stream(self.stream)
@@ -326,8 +324,8 @@ class DiskIODataset(Dataset):
         return dict(
             lq=img_lst[0],
             gt=img_lst[1],
-            name=self.data_info['name'][idx], 
-            idx=self.data_info['idx'][idx], 
+            name=self.data_info['name'][idx], # dataloader will return it as a list (len is batch size)
+            idx=self.data_info['idx'][idx], # dataloader will return it as list-like tensor instead of numpy array (len is batch size)
             )
 
     def __len__(self):

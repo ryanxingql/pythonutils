@@ -1,5 +1,4 @@
 import math
-import lpips
 import torch
 import torch.nn as nn
 import torch.distributed as dist
@@ -20,7 +19,7 @@ def init_dist(local_rank=0, backend='nccl'):
 # Loss
 # ===
 
-loss_lst = ['CharbonnierLoss', 'GANLoss', 'LPIPS', 'VGGLoss', 'PSNRLoss']
+loss_lst = ['CharbonnierLoss', 'GANLoss', 'VGGLoss']
 
 def return_loss_func(name, opts):
     assert (name in loss_lst), '> Not supported!'
@@ -66,18 +65,6 @@ class GANLoss(nn.Module):
         target_label = input_t.new_ones(input_t.size()) * target_val
         loss = self.loss(input_t, target_label)
         return loss
-
-class LPIPS(torch.nn.Module):
-    """
-    Args:
-        spatial: return loss map, instead of a mean value.
-    """
-    def __init__(self, net='alex', spatial=False):
-        super().__init__()
-        self.loss_fn = lpips.LPIPS(net=net, spatial=spatial)
-
-    def forward(self, x, y):
-        return self.loss_fn.forward(x, y).item()
 
 class _VGGFeatureExtractor(nn.Module):
     """VGG network for feature extraction.
@@ -303,16 +290,6 @@ class VGGLoss(nn.Module):
             style_loss *= self.style_weight
 
         return percep_loss + style_loss
-
-class PSNRLoss(torch.nn.Module):
-    def __init__(self, eps=1e-6):
-        super().__init__()
-        self.mse_func = nn.MSELoss()
-
-    def forward(self, x, y):
-        mse = self.mse_func(x, y)
-        psnr = 10 * math.log10(1 / mse.item())
-        return psnr
 
 # ===
 # Optimizer

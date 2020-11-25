@@ -7,10 +7,10 @@ from .dataset import (
 from .deep_learning import (
     init_dist, return_loss_func, return_optimizer, return_scheduler,
     )
-from .metrics import PCC
+from .metrics import PCC, return_crit_func
 from .network import BaseNet
 from .system import (
-    get_timestr, arg2dict, mkdir_archived, set_random_seed, print_n_log, Timer
+    get_timestr, arg2dict, mkdir_archived, set_random_seed, print_n_log, Timer, Recoder
     )
 
 __all__ = [
@@ -23,10 +23,10 @@ __all__ = [
     ] + [
     'init_dist', 'return_loss_func', 'return_optimizer', 'return_scheduler',
     ] + [
-    'PCC',
+    'PCC', 'return_crit_func',
     ]+ [
     'BaseNet',
     ] + [
     'get_timestr', 'arg2dict','mkdir_archived', 'set_random_seed', 'print_n_log',
-    'Timer',
+    'Timer', 'Recoder',
     ]

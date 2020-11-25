@@ -8,7 +8,7 @@ import numpy as np
 from pathlib import Path
 
 # ===
-# Time
+# Time & Recode
 # ===
 
 def get_timestr():
@@ -30,6 +30,21 @@ class Timer():
 
     def get_total(self):
         return time.time() - self.time_lst[0]
+
+class Recoder():
+    def __init__(self):
+        self.reset()
+    
+    def reset(self):
+        self.times = 0.
+        self.total_amount = 0.
+
+    def record(self, amount=0., time=1.):
+        self.times += time
+        self.total_amount += amount
+    
+    def get_ave(self):
+        return self.total_amount / self.times
 
 # ===
 # IO
