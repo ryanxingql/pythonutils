@@ -11,11 +11,10 @@ class BaseAlg():
 
     def create_model(self, model_cls, if_train, opts_dict, rank):
         """
-        Example Change:
-            self.model.module_lst = {
-                'gen': DDP wrapped generator,
-                'dis': DDP wrapped discriminator,
-                }
+        model_cls + opts_dict
+        -> self.model
+            self.model.module_lst
+        -> DDP(module)
         """
         opts_dict_ = dict(
             if_train=if_train,
@@ -27,70 +26,34 @@ class BaseAlg():
             self.model.module_lst[mod_item].to(rank)
             self.model.module_lst[mod_item] = DDP(self.model.module_lst[mod_item], device_ids=[rank])
 
-    def load_state(self, ckp_load_path, load_item_lst, if_dist=True):
-        """
-        Args:
-            load_item_lst (example):
-                ['module_gen', 'module_dis', 'optim_gen', 'optim_dis', 'sched_gen'， 'sched_dis']
-            if_dist: if load for distributed training.
-        """
-        ckp = torch.load(ckp_load_path)
-        for load_item in load_item_lst:
-            state = ckp[load_item]
-            # load module
-            if 'module_' in load_item:
-                item_name = load_item[7:]
-                if ('module.' in list(state.keys())[0]) and if_dist:  # multi-gpu pre-trained -> single-gpu training
-                    new_state = OrderedDict()
-                    for k, v in state.items():
-                        name = k[7:]  # remove module
-                        new_state[name] = v
-                    self.model.module_lst[item_name].load_state_dict(new_state)
-                elif ('module.' not in list(state.keys())[0]) and if_dist:  # single-gpu pre-trained -> multi-gpu training
-                    new_state = OrderedDict()
-                    for k, v in state.items():
-                        name = 'module.' + k  # add module
-                        new_state[name] = v
-                    self.model.module_lst[item_name].load_state_dict(new_state)
-                else:  # the same way of training
-                    self.model.module_lst[item_name].load_state_dict(state)
-            # load optim
-            elif 'optim_' in load_item:
-                item_name = load_item[6:]
-                self.optim_lst[item_name].load_state_dict(state)
-            # load sched
-            elif 'sched_' in load_item:
-                item_name = load_item[6:]
-                self.sched_lst[item_name].load_state_dict(state)
-
     def print_net(self, log_fp):
-        for msg_key in self.model.msg_lst:
-           print_n_log(self.model.msg_lst[msg_key], log_fp)
+        if hasattr(self.model, 'msg_lst'):
+            for msg_key in self.model.msg_lst:
+                print_n_log(self.model.msg_lst[msg_key], log_fp)
+
+    def set_train_mode(self):
+        """
+        module.train()
+        """
+        for mod_key in self.model.module_lst:
+            self.model.module_lst[mod_key].train()
+
+    def set_eval_mode(self):
+        """
+        module.eval()
+        """
+        for mod_key in self.model.module_lst:
+            self.model.module_lst[mod_key].eval()
 
     def create_loss_func(self, opts_dict, if_use_cuda=True, rank=None):
         """
+        opts_dict
+        -> self.loss_lst
+        -> (if_use_cuda) loss on cuda
+
         Args:
             opts_dict (example):
-                CharbonnierLoss:
-                    weight: !!float 1e-2
-                    opts:
-                        eps: !!float 1e-6
-                    
-                VGGLoss:
-                    weight: 1.
-                    opts:
-                        vgg_type: vgg19
-                        layer_weights:
-                            conv5_4: 1.
-                        use_input_norm: True
-                        perceptual_weight: 1.
-                        style_weight: 0.
-                    
-                GANLoss:
-                    weight: !!float 5e-3
-                    opts:
-                        real_label_val: 1.
-                        fake_label_val: 0.
+                xxx
         """
         self.loss_lst = dict()
         for loss_name in opts_dict:
@@ -104,28 +67,16 @@ class BaseAlg():
 
     def create_optimizer(self, params_lst, opts_dict):
         """
+        opts_dict
+        -> self.optim_lst
+        -> (if TTUR) lr for gen / 2, lr for dis * 2.
+
         Args:
             params_lst (example):
-                {
-                    'gen': params_g,
-                    'dis': params_d,
-                }
+                gen: params_g
+                dis: params_d
             opts_dict (example):
-                TTUR:  # two time-scale update rule for GANs
-                    if_ttur: True
-                    lr: !!float 2e-4
-
-                gen:
-                    type: Adam
-                    opts:
-                    lr: ~
-                        betas: [0.9, 0.999]
-
-                dis:
-                    type: Adam
-                    opts:
-                        lr: ~
-                        betas: [0.9, 0.999]
+                xxx
         """
         opts_ttur = opts_dict.pop('TTUR')
         if_ttur = False
@@ -152,21 +103,12 @@ class BaseAlg():
 
     def create_scheduler(self, optim_lst, opts_dict):
         """
+        opts_dict
+        -> self.optim_lst
+
         Args:
             opts_dict (example):
-                if_sched: True
-
-                gen:
-                    type: MultiStepLR
-                    opts:
-                        milestones: [20,35,45,50]
-                        gamma: 0.5
-
-                dis:
-                    type: MultiStepLR
-                    opts:
-                        milestones: [20,35,45,50]
-                        gamma: 0.5
+                xxx
         """
         self.sched_lst = dict()
         for sched_item in opts_dict:
@@ -178,15 +120,56 @@ class BaseAlg():
             sched = return_scheduler(**opts_dict_)
             self.sched_lst[sched_item] = sched
 
-    def set_eval_mode(self):
-        for mod_key in self.model.module_lst:
-            self.model.module_lst[mod_key].eval()
+    def load_state(self, ckp_load_path, load_item_lst, if_dist=True):
+        """
+        ckp_load_path
+        -> ckp
 
-    def set_train_mode(self):
-        for mod_key in self.model.module_lst:
-            self.model.module_lst[mod_key].train()
+        ckp + load_item_lst
+        -> load each item from ckp
+
+        Args:
+            load_item_lst (example):
+                ['module_gen', 'module_dis', 'optim_gen', 'optim_dis', 'sched_gen'， 'sched_dis']
+            if_dist: if load for distributed training.
+        """
+        ckp = torch.load(ckp_load_path)
+        for load_item in load_item_lst:
+            state_dict = ckp[load_item]
+
+            # load module
+            if 'module_' in load_item:
+                item_name = load_item[7:]
+                if ('module.' in list(state_dict.keys())[0]) and if_dist:  # multi-gpu pre-trained -> single-gpu training
+                    new_state_dict = OrderedDict()
+                    for k, v in state_dict.items():
+                        name = k[7:]  # remove module
+                        new_state_dict[name] = v
+                    self.model.module_lst[item_name].load_state_dict(new_state_dict)
+                elif ('module.' not in list(state_dict.keys())[0]) and if_dist:  # single-gpu pre-trained -> multi-gpu training
+                    new_state_dict = OrderedDict()
+                    for k, v in state_dict.items():
+                        name = 'module.' + k  # add module
+                        new_state_dict[name] = v
+                    self.model.module_lst[item_name].load_state_dict(new_state_dict)
+                else:  # the same way of training
+                    self.model.module_lst[item_name].load_state_dict(state_dict)
+            
+            # load optim
+            elif 'optim_' in load_item:
+                item_name = load_item[6:]
+                self.optim_lst[item_name].load_state_dict(state_dict)
+            
+            # load sched
+            elif 'sched_' in load_item:
+                item_name = load_item[6:]
+                self.sched_lst[item_name].load_state_dict(state_dict)
 
     def save_state(self, ckp_save_path, iter, if_sched):
+        """
+        ckp_save_path
+        -> save iter, modules, optims and scheds to ckp_save_path
+        """
         state = dict(iter=iter)
         for mod_item in self.model.module_lst:
             state[f'module_{mod_item}'] = self.model.module_lst[mod_item].state_dict()
@@ -198,5 +181,6 @@ class BaseAlg():
         torch.save(state, ckp_save_path)
 
     def update_lr(self):
+        """Update lrs of all scheduler."""
         for sched_item in self.sched_lst:
             self.sched_lst[sched_item].step()
