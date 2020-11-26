@@ -19,10 +19,10 @@ def init_dist(local_rank=0, backend='nccl'):
 # Loss
 # ===
 
-loss_lst = ['CharbonnierLoss', 'GANLoss', 'VGGLoss']
+loss_lst = ['CharbonnierLoss', 'GANLoss', 'RelativisticGANLoss', 'VGGLoss']
 
 def return_loss_func(name, opts):
-    assert (name in loss_lst), '> Not supported!'
+    assert (name in loss_lst), '> Unsupported loss fn!'
     loss_func_cls = globals()[name]
     return loss_func_cls(**opts)
 
@@ -32,7 +32,7 @@ class CharbonnierLoss(torch.nn.Module):
         self.eps = eps
 
     def forward(self, x, y):
-        assert len(x.shape) <= 4, 'Not supported!'
+        assert len(x.shape) <= 4, '> Unsupported input!'
         if len(x.shape) < 3:
             x = x.unsqueeze(0)
         n = x.shape[0]
@@ -42,28 +42,76 @@ class CharbonnierLoss(torch.nn.Module):
         return loss
 
 class GANLoss(nn.Module):
-    """Define GAN loss.
-    Args:
-        real_label_val (float): The value for real label. Default: 1.0.
-        fake_label_val (float): The value for fake label. Default: 0.0.
-    """
     def __init__(
             self,
             real_label_val=1.0,
             fake_label_val=0.0,
             ):
+        """
+        Args:
+            real_label_val (float): The value for real label. Default: 1.0.
+            fake_label_val (float): The value for fake label. Default: 0.0.
+        """
         super().__init__()
 
         self.real_label_val = real_label_val
         self.fake_label_val = fake_label_val
-        self.loss = nn.BCEWithLogitsLoss()
+        self.loss = nn.BCEWithLogitsLoss()  # sigmoid -> Binary Cross Entropy
 
-    def forward(self, input_t, target_is_real):
+    def forward(self, input_t, if_real):
+        """
+        Args:
+            input_t: a list of scores from GANs discriminator.
+            if_real (True|False): if the sample is real (gt, not enhanced sample).
+        """
         target_val = (
-            self.real_label_val if target_is_real else self.fake_label_val
+            self.real_label_val if if_real else self.fake_label_val
             )
         target_label = input_t.new_ones(input_t.size()) * target_val
         loss = self.loss(input_t, target_label)
+        return loss
+
+class RelativisticGANLoss(nn.Module):
+    def __init__(
+            self,
+            real_label_val=1.,
+            fake_label_val=0.,
+            ):
+        """
+        gan_loss_func(x - y, target)
+        if x is more real than y, then two d out distance aims to be 1. for dis.
+        if x is less real than y, then two d out distance aims to be 0. for dis.
+
+        Args:
+            real_label_val (float): The value for real label. Default: 1..
+            fake_label_val (float): The value for fake label. Default: 0..
+        """
+        super().__init__()
+
+        self.gan_loss = GANLoss(real_label_val, fake_label_val)
+
+    def forward(self, real_pred, fake_pred, mode='gen'):
+        """
+        For gen loss:
+            gt -> dis -> real_pred (can detach)
+            lq -> gen -> enhanced -> dis -> fake_pred
+        For dis loss:
+            gt -> dis -> real_pred
+            lq -> gen -> enhanced (can detach) -> dis -> fake_pred
+
+        Args:
+            mode (gen|dis)
+        """
+        assert mode in ['gen', 'dis'], '> Unsupported mode!'
+        if mode == 'gen':
+            real_pred = real_pred.detach()  # unrelated to the dis
+            loss_real = self.gan_loss(real_pred - torch.mean(fake_pred), False)
+            loss_fake = self.gan_loss(fake_pred - torch.mean(real_pred), True)
+            loss = (loss_real + loss_fake) / 2.
+        elif mode == 'dis':
+            loss_real = self.gan_loss(real_pred - torch.mean(fake_pred), True)
+            loss_fake = self.gan_loss(fake_pred - torch.mean(real_pred), False)
+            loss = (loss_real + loss_fake) / 2.
         return loss
 
 class _VGGFeatureExtractor(nn.Module):
@@ -298,7 +346,7 @@ class VGGLoss(nn.Module):
 optim_lst = ['Adam']
 
 def return_optimizer(name, params, opts):
-    assert (name in optim_lst), '> Not supported!'
+    assert (name in optim_lst), '> Unsupported optimizer!'
     if name == 'Adam':
         return torch.optim.Adam(params, **opts)
 
@@ -338,7 +386,7 @@ def return_scheduler(name, optim, opts):
             gamma=0.1
             last_epoch=-1
     """
-    assert (name in scheduler_lst), '> Not supported!'
+    assert (name in scheduler_lst), '> Unsupported scheduler!'
     if name == 'CosineAnnealingWarmRestarts':
         return torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optim, **opts)
     elif name == 'CosineAnnealingLR':

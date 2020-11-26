@@ -1,4 +1,3 @@
-import math
 import torch
 import lpips
 import numpy as np
@@ -50,7 +49,7 @@ class PCC():
 crit_lst = ['PSNR', 'LPIPS']
 
 def return_crit_func(name, opts):
-    assert (name in crit_lst), '> Not supported!'
+    assert (name in crit_lst), '> Unsupported criterion func!'
     crit_func_cls = globals()[name]
     if opts is not None:
         return crit_func_cls(**opts)
@@ -59,14 +58,14 @@ def return_crit_func(name, opts):
 
 class PSNR(torch.nn.Module):
     """Input tensor. Return a float."""
-    def __init__(self, eps=1e-6):
+    def __init__(self):
         super().__init__()
         self.mse_func = nn.MSELoss()
 
     def forward(self, x, y):
         mse = self.mse_func(x, y)
-        psnr = 10 * math.log10(1 / mse.item())
-        return psnr
+        psnr = 10 * torch.log10(1. / mse)
+        return psnr.item()
 
 class LPIPS(torch.nn.Module):
     """
@@ -80,5 +79,6 @@ class LPIPS(torch.nn.Module):
             self.lpips_fn.cuda()
 
     def forward(self, x, y):
-        return self.lpips_fn.forward(x, y).item()
+        lpips_score = self.lpips_fn.forward(x, y)
+        return lpips_score.item()
     

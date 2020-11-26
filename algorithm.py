@@ -1,9 +1,8 @@
 import torch
-from tqdm import tqdm
 from collections import OrderedDict
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-from .system import print_n_log, Recoder
+from .system import print_n_log
 from .metrics import return_crit_func
 from .deep_learning import return_optimizer, return_loss_func, return_scheduler
 
@@ -57,16 +56,15 @@ class BaseAlg():
             opts_dict (example):
                 xxx
         """
-        self.loss_lst = []
+        self.loss_lst = dict()
         for loss_name in opts_dict:
             loss_func = return_loss_func(name=loss_name, opts=opts_dict[loss_name]['opts'])
             if if_use_cuda:
                 loss_func = loss_func.cuda()
-            self.loss_lst.append(dict(
-                name=loss_name,
+            self.loss_lst[loss_name] = dict(
                 weight=opts_dict[loss_name]['weight'],
-                func=loss_func,
-                ))
+                fn=loss_func,
+                )
 
     def create_optimizer(self, params_lst, opts_dict):
         """
@@ -132,32 +130,31 @@ class BaseAlg():
             opts_dict (example):
                 xxx
         """
-        self.crit_lst = []
+        self.crit_lst = dict()
         for crit_item in opts_dict:
             fn = return_crit_func(crit_item, opts_dict[crit_item]['opts'])
             unit = opts_dict[crit_item]['unit']
-            self.crit_lst.append(dict(
-                name=crit_item,
+            self.crit_lst[crit_item] = dict(
                 fn=fn,
                 unit=unit,
-                ))
+                )
 
     def load_state(self, ckp_load_path, load_item_lst, if_dist=True):
         """
         ckp_load_path
-        -> ckp
+        -> states
 
-        ckp + load_item_lst
-        -> load each item from ckp
+        states + load_item_lst
+        -> load each item from states
 
         Args:
             load_item_lst (example):
                 ['module_gen', 'module_dis', 'optim_gen', 'optim_dis', 'sched_gen'， 'sched_dis']
             if_dist: if load for distributed training.
         """
-        ckp = torch.load(ckp_load_path)
+        states = torch.load(ckp_load_path)
         for load_item in load_item_lst:
-            state_dict = ckp[load_item]
+            state_dict = states[load_item]
 
             # load module
             if 'module_' in load_item:
@@ -186,53 +183,23 @@ class BaseAlg():
             elif 'sched_' in load_item:
                 item_name = load_item[6:]
                 self.sched_lst[item_name].load_state_dict(state_dict)
+            
+        return states['iter']
 
     def save_state(self, ckp_save_path, iter, if_sched):
         """
         ckp_save_path
-        -> save iter, modules, optims and scheds to ckp_save_path
+        -> save iter, modules, optims and scheds to ckp_save_path as states
         """
-        state_dict = dict(iter=iter)
+        states = dict(iter=iter)
         for mod_item in self.model.module_lst:
-            state_dict[f'module_{mod_item}'] = self.model.module_lst[mod_item].state_dict()
+            states[f'module_{mod_item}'] = self.model.module_lst[mod_item].state_dict()
         for optim_item in self.optim_lst:
-            state_dict[f'optim_{optim_item}'] = self.optim_lst[optim_item].state_dict()
+            states[f'optim_{optim_item}'] = self.optim_lst[optim_item].state_dict()
         if if_sched:
             for sched_item in self.sched_lst:
-                state_dict[f'sched_{sched_item}'] = self.sched_lst[sched_item].state_dict()
-        print(state_dict)
-        torch.save(state_dict, ckp_save_path)
-
-    def pre_test(self, test_fetcher, nsample_test):
-        self.set_eval_mode()
-        msg = ''
-        with torch.no_grad():
-            for crit_fn_dict in self.crit_lst:
-                crit_name = crit_fn_dict['name']
-                crit_fn = crit_fn_dict['fn']
-                crit_unit = crit_fn_dict['unit']
-
-                pbar = tqdm(total=nsample_test, ncols=80)
-                recorder = Recoder()
-                test_fetcher.reset()
-                
-                test_data = test_fetcher.next()
-                assert len(test_data['name']) == 1, 'Only support bs=1 for test!'
-                while test_data is not None:
-                    im_gt = torch.squeeze(test_data['gt'], 0).cuda()  # assume bs=1
-                    im_lq = torch.squeeze(test_data['lq'], 0).cuda()  # assume bs=1
-                    im_name = test_data['name'][0]  # assume bs=1
-                    
-                    perfm = crit_fn(im_gt, im_lq)
-                    recorder.record(amount=perfm)
-                    
-                    pbar.set_description(f'{im_name}: [{perfm:.3f}] {crit_unit:s}')
-                    pbar.update()
-                    
-                    test_data = test_fetcher.next()
-                msg += f'> baseline {crit_name}: [{recorder.get_ave():.3f}] {crit_unit}\n'
-                pbar.close()
-        return msg.rstrip()
+                states[f'sched_{sched_item}'] = self.sched_lst[sched_item].state_dict()
+        torch.save(states, ckp_save_path)
 
     def update_lr(self):
         """Update lrs of all scheduler."""
