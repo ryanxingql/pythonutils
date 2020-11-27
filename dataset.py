@@ -267,8 +267,10 @@ class DiskIODataset(Dataset):
     
     gt_path and lq_path: relative paths to the dataset folder.
     opt_aug: True for training data, and False for test data.
+    max_num: clip the dataset.
+    if_train: if True, clip from the front; if False, clip from the tail.
     """
-    def __init__(self, gt_path, lq_path, max_num, aug):
+    def __init__(self, gt_path, lq_path, max_num, if_train, aug):
         super().__init__()
 
         # dataset path
@@ -283,7 +285,11 @@ class DiskIODataset(Dataset):
             name=[],
             )
 
-        gt_lst = sorted(list(self.gt_path.glob('*.png')))[:max_num]
+        gt_lst = sorted(list(self.gt_path.glob('*.png')))
+        if if_train:
+            gt_lst = gt_lst[:max_num]
+        else:
+            gt_lst = gt_lst[-max_num:]
         self.gt_num = len(gt_lst)
         
         for idx, gt_path in enumerate(gt_lst):
