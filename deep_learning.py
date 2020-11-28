@@ -31,12 +31,12 @@ class CharbonnierLoss(torch.nn.Module):
         super().__init__()
         self.eps = eps
 
-    def forward(self, x, y):
-        assert len(x.shape) <= 4, '> Unsupported input!'
-        if len(x.shape) < 3:
-            x = x.unsqueeze(0)
-        n = x.shape[0]
-        diff = [torch.add(x[k], -y[k]) for k in range(n)]
+    def forward(self, inp, ref):
+        assert len(inp.shape) <= 4, '> Unsupported input!'
+        if len(inp.shape) < 3:
+            inp = inp.unsqueeze(0)
+        n = inp.shape[0]
+        diff = [torch.add(inp[k], -ref[k]) for k in range(n)]
         error = [torch.sqrt(diff[k] * diff[k] + self.eps) for k in range(n)]
         loss = torch.mean(torch.stack([torch.mean(error[k]) for k in range(n)]))
         return loss
@@ -90,7 +90,7 @@ class RelativisticGANLoss(nn.Module):
 
         self.gan_loss = GANLoss(real_label_val, fake_label_val)
 
-    def forward(self, real_pred, fake_pred, mode='gen'):
+    def forward(self, dis, data_real, data_fake, mode='gen'):
         """
         For gen loss:
             gt -> dis -> real_pred (can detach)
@@ -101,18 +101,31 @@ class RelativisticGANLoss(nn.Module):
 
         Args:
             mode (gen|dis)
+
+        If we use VGG discriminator which includes inplace BN operation, we should make sure that we use dis only once before backward.
         """
         assert mode in ['gen', 'dis'], '> Unsupported mode!'
         if mode == 'gen':
-            real_pred = real_pred.detach()  # unrelated to the dis
+            real_pred = dis(data_real).detach()  # unrelated to dis
+            fake_pred = dis(data_fake)  # use dis here; only once
             loss_real = self.gan_loss(real_pred - torch.mean(fake_pred), False)
             loss_fake = self.gan_loss(fake_pred - torch.mean(real_pred), True)
-            loss = (loss_real + loss_fake) / 2.
+            loss = loss_real * 0.5 + loss_fake * 0.5
+            return loss
+            
         elif mode == 'dis':
-            loss_real = self.gan_loss(real_pred - torch.mean(fake_pred), True)
-            loss_fake = self.gan_loss(fake_pred - torch.mean(real_pred), False)
-            loss = (loss_real + loss_fake) / 2.
-        return loss
+            # fake_pred must be in front of real_pred, so that dis is only used once
+            fake_pred_d = dis(data_fake.detach()).detach()
+            real_pred = dis(data_real)  # use dis here
+            loss_real = self.gan_loss(real_pred - torch.mean(fake_pred_d), True) * 0.5
+            loss_real.backward()
+
+            fake_pred = dis(data_fake.detach())  # use dis here; 
+            real_pred_d = real_pred.detach()
+            loss_fake = self.gan_loss(fake_pred - torch.mean(real_pred_d), False) * 0.5  # for loss_fake, detach as constant
+            loss_fake.backward()
+        
+            return (loss_real + loss_fake).item()
 
 class _VGGFeatureExtractor(nn.Module):
     """VGG network for feature extraction.
@@ -307,16 +320,16 @@ class VGGLoss(nn.Module):
         gram = features.bmm(features_t) / (c * h * w)
         return gram
 
-    def forward(self, x, gt):
+    def forward(self, inp, ref):
         """
-        x (Tensor): Input tensor with shape (n, c, h, w).
-        gt (Tensor): Ground-truth tensor with shape (n, c, h, w).
+        inp (Tensor): Input tensor with shape (n, c, h, w).
+        ref (Tensor): Ground-truth tensor with shape (n, c, h, w).
         
         Returns tensor.
         """
         # extract vgg features
-        x_features = self.vgg(x)
-        gt_features = self.vgg(gt.detach())
+        x_features = self.vgg(inp)
+        gt_features = self.vgg(ref.detach())
 
         # calculate perceptual loss
         percep_loss = 0

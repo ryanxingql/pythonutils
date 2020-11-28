@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 from collections import OrderedDict
 from torch.nn.parallel import DistributedDataParallel as DDP
 
@@ -25,6 +26,7 @@ class BaseAlg():
 
         for mod_item in self.model.module_lst:
             self.model.module_lst[mod_item].cuda()
+            self.model.module_lst[mod_item] = nn.SyncBatchNorm.convert_sync_batchnorm(self.model.module_lst[mod_item])  # convert all bn to syncbatchnorm
             self.model.module_lst[mod_item] = DDP(self.model.module_lst[mod_item], device_ids=[torch.cuda.current_device()])
 
     def print_net(self, log_fp):
