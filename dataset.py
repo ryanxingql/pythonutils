@@ -270,12 +270,13 @@ class DiskIODataset(Dataset):
     max_num: clip the dataset.
     if_train: if True, clip front to back; if False, clip back to front.
     """
-    def __init__(self, gt_path, lq_path, max_num, if_train, aug):
+    def __init__(self, gt_path, lq_path, max_num, if_train, aug=None):
         super().__init__()
 
         # dataset path
         self.gt_path = Path(gt_path)
         self.lq_path = Path(lq_path)
+        self.if_train = if_train
 
         # record data info
         self.data_info = dict(
@@ -288,6 +289,7 @@ class DiskIODataset(Dataset):
         gt_lst = sorted(list(self.gt_path.glob('*.png')))
         if if_train:
             gt_lst = gt_lst[:max_num]  # front to back
+            self.opts_aug = aug['opts']
         else:
             gt_lst = gt_lst[-max_num:]  # back to front
         self.gt_num = len(gt_lst)
@@ -300,8 +302,6 @@ class DiskIODataset(Dataset):
             self.data_info['lq_path'].append(lq_path)
             self.data_info['name'].append(name)
 
-        self.aug = aug
-
     @staticmethod
     def _read_img(img_path):
         """Read im -> (H W [BGR]) uint8."""
@@ -313,13 +313,13 @@ class DiskIODataset(Dataset):
         img_lq = self._read_img(self.data_info['lq_path'][idx])
 
         # augmentation for training data
-        if self.aug['if_aug']:
+        if self.if_train:
             img_gt, img_lq = _paired_random_crop(
-                img_gt, img_lq, self.aug['gt_sz'],
+                img_gt, img_lq, self.opts_aug['gt_sz'],
                 )
             img_lst = [img_lq, img_gt] # gt is augmented jointly with lq
             img_lst = _augment(
-                img_lst, self.aug['if_flip'], self.aug['if_rot']
+                img_lst, self.opts_aug['if_flip'], self.opts_aug['if_rot']
                 )
             img_lq, img_gt = img_lst[:]
 
