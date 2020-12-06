@@ -68,9 +68,13 @@ class PSNR(torch.nn.Module):
         return psnr.item()
 
 class LPIPS(torch.nn.Module):
-    """
+    """Learned Perceptual Image Patch Similarity.
+
     Args:
-        spatial: return a score or a map of scores.
+        if_spatial: return a score or a map of scores.
+        im: cv2 loaded images, or ([RGB] H W), [-1, 1] CUDA tensor.
+
+    https://github.com/richzhang/PerceptualSimilarity
     """
     def __init__(self, net='alex', if_spatial=False, if_cuda=True):
         super().__init__()
@@ -78,7 +82,18 @@ class LPIPS(torch.nn.Module):
         if if_cuda:
             self.lpips_fn.cuda()
 
-    def forward(self, x, y):
-        lpips_score = self.lpips_fn.forward(x, y)
+    def _preprocess(self, im):
+        im = im[:, :, ::-1]  # (H W BGR) -> (H W RGB)
+        im = im / (255. / 2.)  - 1.
+        im = im[..., np.newaxis]  # (H W RGB 1)
+        im = im.transpose(3, 2, 0, 1)  # B=1 C=RGB H W
+        im = torch.Tensor(im)
+        return im
+
+    def forward(self, ref, im):
+        if ref.dtype == np.uint8:
+            ref = self._preprocess(ref)
+            im = self._preprocess(im)
+        lpips_score = self.lpips_fn.forward(ref, im)
         return lpips_score.item()
     

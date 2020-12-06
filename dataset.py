@@ -87,7 +87,7 @@ def _totensor(img_lst, if_bgr2rgb=True, if_float32=True):
             img = bgr2rgb(img)
         img = torch.from_numpy(img.transpose(2, 0, 1).copy())
         if if_float32:
-            img = img.float() / 255.
+            img = img.float() / (255. / 2.) - 1.
         return img
 
     if isinstance(img_lst, list):
@@ -337,10 +337,8 @@ class DiskIODataset(Dataset):
     def __len__(self):
         return self.gt_num
 
+"""unfinished
 class LMDBIODataset(Dataset):
-    """
-    unfinished
-    """
     def __init__(self, opts_dict):
         super().__init__()
 
@@ -367,9 +365,6 @@ class LMDBIODataset(Dataset):
 
     @staticmethod
     def _read_img_bytes(img_bytes):
-        """
-        unfinished
-        """
         img_np = np.frombuffer(img_bytes, np.uint8)
         img_np = cv2.imdecode(img_np, cv2.IMREAD_COLOR)
         img_np = (img_np / 255.).astype(np.float32)
@@ -410,4 +405,4 @@ class LMDBIODataset(Dataset):
 
     def __len__(self):
         return len(self.keys)
-    
+"""
