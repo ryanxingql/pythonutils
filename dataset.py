@@ -87,7 +87,7 @@ def _totensor(img_lst, if_bgr2rgb=True, if_float32=True):
             img = bgr2rgb(img)
         img = torch.from_numpy(img.transpose(2, 0, 1).copy())
         if if_float32:
-            img = img.float() / (255. / 2.) - 1.
+            img = img.float() / 255.
         return img
 
     if isinstance(img_lst, list):
