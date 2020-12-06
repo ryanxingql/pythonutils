@@ -42,11 +42,11 @@ def rgb2bgr(im):
 def tensor2im(t):
     """Tensor -> im.
     
-    Input: tensor, (C H W), torch.float, mainly [0,1].
+    Input: tensor, (C H W), torch.float, [0,1].
     Return: array, (H W C) for cv2.imwrite, np.uint8 ([0,255]).
     """
     im = t.cpu().detach().numpy()[::-1, :, :]
-    im = im * 255.
+    im *= 255.
     im = im.round()  # first round. directly astype will cut decimals
     im = im.clip(0, 255)  # else, -1 -> 255, -2 -> 254!
     im = im.astype(np.uint8)
