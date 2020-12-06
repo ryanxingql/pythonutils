@@ -1,7 +1,7 @@
 from .algorithm import BaseAlg
 from .conversion import bgr2rgb, rgb2bgr, dict2str
 from .dataset import (
-    DiskIODataset, LMDBIODataset, DistSampler, create_dataloader,
+    DiskIODataset, DistSampler, create_dataloader,
     CPUPrefetcher,
     )
 from .deep_learning import (
@@ -18,7 +18,7 @@ __all__ = [
     ] + [
     'bgr2rgb', 'rgb2bgr', 'dict2str',
     ] + [
-    'DiskIODataset', 'LMDBIODataset', 'DistSampler', 'create_dataloader',
+    'DiskIODataset', 'DistSampler', 'create_dataloader',
     'CPUPrefetcher',
     ] + [
     'init_dist', 'return_loss_func', 'return_optimizer', 'return_scheduler',
