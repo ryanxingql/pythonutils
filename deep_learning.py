@@ -56,7 +56,7 @@ class GANLoss(nn.Module):
 
         self.real_label_val = real_label_val
         self.fake_label_val = fake_label_val
-        self.loss = nn.BCEWithLogitsLoss()  # sigmoid -> Binary Cross Entropy
+        self.loss = nn.BCEWithLogitsLoss(reduction='mean')  # sigmoid -> Binary Cross Entropy
 
     def forward(self, input_t, if_real):
         """
@@ -90,7 +90,7 @@ class RelativisticGANLoss(nn.Module):
 
         self.gan_loss = GANLoss(real_label_val, fake_label_val)
 
-    def forward(self, dis, data_real, data_fake, mode='gen'):
+    def forward(self, dis, data_real, data_fake, inter_step, mode='gen'):
         """
         For gen loss:
             gt -> dis -> real_pred (can detach)
@@ -111,6 +111,7 @@ class RelativisticGANLoss(nn.Module):
             loss_real = self.gan_loss(real_pred - torch.mean(fake_pred), False)
             loss_fake = self.gan_loss(fake_pred - torch.mean(real_pred), True)
             loss = loss_real * 0.5 + loss_fake * 0.5
+            loss /= inter_step.float()  # multiple backwards and step once, thus mean
             return loss
             
         elif mode == 'dis':
@@ -118,11 +119,13 @@ class RelativisticGANLoss(nn.Module):
             fake_pred_d = dis(data_fake.detach()).detach()
             real_pred = dis(data_real)  # use dis here
             loss_real = self.gan_loss(real_pred - torch.mean(fake_pred_d), True) * 0.5
+            loss_real /= inter_step.float()  # multiple backwards and step once, thus mean
             loss_real.backward()
 
             fake_pred = dis(data_fake.detach())  # use dis here; 
             real_pred_d = real_pred.detach()
             loss_fake = self.gan_loss(fake_pred - torch.mean(real_pred_d), False) * 0.5  # for loss_fake, detach as constant
+            loss_fake /= inter_step.float()  # multiple backwards and step once, thus mean
             loss_fake.backward()
         
             return (loss_real + loss_fake).item()
