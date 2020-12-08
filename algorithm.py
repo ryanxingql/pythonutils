@@ -161,7 +161,7 @@ class BaseAlg():
             # load module
             if 'module_' in load_item:
                 item_name = load_item[7:]
-                if ('module.' in list(state_dict.keys())[0]) and if_dist:  # multi-gpu pre-trained -> single-gpu training
+                if ('module.' in list(state_dict.keys())[0]) and (not if_dist):  # multi-gpu pre-trained -> single-gpu training
                     new_state_dict = OrderedDict()
                     for k, v in state_dict.items():
                         name = k[7:]  # remove module
