@@ -16,4 +16,6 @@ Feel free to contact: ryanxingql@gmail.com.
 
 ## Principle
 
-- If needed functions exist in available packages, we do not write it again; just wrap and clarify it.
+- Image default format: (H W C) uint8 numpy array.
+- In default, input is first copied then processed. Note that `np.copy` is a shallow copy and will not copy object elements within arrays. See [ref](https://numpy.org/doc/stable/reference/generated/numpy.copy.html).
+- In default, input image is first converted to `np.float64`, then converted back after processing.

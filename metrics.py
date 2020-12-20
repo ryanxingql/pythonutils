@@ -1,5 +1,4 @@
 import torch
-import lpips
 import numpy as np
 from scipy import stats
 from torch import nn as nn
@@ -78,6 +77,8 @@ class LPIPS(torch.nn.Module):
     """
     def __init__(self, net='alex', if_spatial=False, if_cuda=True):
         super().__init__()
+        import lpips
+
         self.lpips_fn = lpips.LPIPS(net=net, spatial=if_spatial)
         if if_cuda:
             self.lpips_fn.cuda()
