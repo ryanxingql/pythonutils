@@ -1,23 +1,17 @@
 from .algorithm import BaseAlg
-from .conversion import bgr2rgb, rgb2bgr, tensor2im, rgb2ycbcr, bgr2ycbcr, yuv420p2444p, ycbcr2rgb, ycbcr2bgr, import_yuv, dict2str
-from .dataset import DiskIODataset, DistSampler, create_dataloader, CPUPrefetcher
+from .conversion import imread, tensor2im, rgb2bgr, bgr2rgb, rgb2ycbcr, bgr2ycbcr, ycbcr2rgb, ycbcr2bgr, yuv420p2444p, import_yuv, dict2str
+from .dataset import DistSampler, create_dataloader, CPUPrefetcher, CUDAPrefetcher, DiskIODataset
 from .deep_learning import init_dist, return_loss_func, return_optimizer, return_scheduler
 from .metrics import PCC, return_crit_func
 from .network import BaseNet
-from .system import get_timestr, arg2dict, mkdir_archived, set_random_seed, print_n_log, Timer, Recoder
+from .system import get_timestr, Timer, Recoder, arg2dict, print_n_log, mkdir_archived, set_random_seed
 
 __all__ = [
     'BaseAlg',
-    ] + [
-    'bgr2rgb', 'rgb2bgr', 'tensor2im', 'rgb2ycbcr', 'bgr2ycbcr', 'yuv420p2444p0, ''ycbcr2rgb', 'ycbcr2bgr', 'import_yuv', 'dict2str',
-    ] + [
-    'DiskIODataset', 'DistSampler', 'create_dataloader', 'CPUPrefetcher',
-    ] + [
+    'imread', 'tensor2im', 'rgb2bgr', 'bgr2rgb', 'rgb2ycbcr', 'bgr2ycbcr', 'ycbcr2rgb', 'ycbcr2bgr', 'yuv420p2444p', 'import_yuv', 'dict2str',
+    'DistSampler', 'create_dataloader', 'CPUPrefetcher', 'CUDAPrefetcher', 'DiskIODataset',
     'init_dist', 'return_loss_func', 'return_optimizer', 'return_scheduler',
-    ] + [
     'PCC', 'return_crit_func',
-    ]+ [
     'BaseNet',
-    ] + [
-    'get_timestr', 'arg2dict','mkdir_archived', 'set_random_seed', 'print_n_log', 'Timer', 'Recoder',
+    'get_timestr', 'Timer', 'Recoder', 'arg2dict', 'print_n_log', 'mkdir_archived', 'set_random_seed',
     ]
