@@ -36,15 +36,13 @@ class Recoder():
         self.reset()
     
     def reset(self):
-        self.times = 0.
-        self.total_amount = 0.
+        self.result_lst = []
 
-    def record(self, amount=0., time=1.):
-        self.times += time
-        self.total_amount += amount
+    def record(self, result):
+        self.result_lst.append(result)
     
     def get_ave(self):
-        return self.total_amount / self.times
+        return sum(self.result_lst) / float(len(self.result_lst))
 
 # ===
 # IO
