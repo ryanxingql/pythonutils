@@ -270,8 +270,10 @@ class DiskIODataset(Dataset):
     max_num: clip the dataset.
     if_train: if True, clip front to back; if False, clip back to front.
     """
-    def __init__(self, gt_path, lq_path, max_num, if_train, aug=None):
+    def __init__(self, gt_path, lq_path, max_num, if_train, start_idx=0, aug=None):
         super().__init__()
+
+        self.opts_aug = aug['opts'] if (aug is not None) else None
 
         # dataset path
         self.gt_path = Path(gt_path)
@@ -287,11 +289,7 @@ class DiskIODataset(Dataset):
             )
 
         gt_lst = sorted(list(self.gt_path.glob('*.png')))
-        if if_train:
-            gt_lst = gt_lst[:max_num]  # front to back
-            self.opts_aug = aug['opts']
-        else:
-            gt_lst = gt_lst[-max_num:]  # back to front
+        gt_lst = gt_lst[start_idx:max_num]  # front to back
         self.gt_num = len(gt_lst)
         
         for idx, gt_path in enumerate(gt_lst):
