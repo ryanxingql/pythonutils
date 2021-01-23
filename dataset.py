@@ -289,7 +289,7 @@ class DiskIODataset(Dataset):
             )
 
         gt_lst = sorted(list(self.gt_path.glob('*.png')))
-        gt_lst = gt_lst[start_idx:max_num]  # front to back
+        gt_lst = gt_lst[start_idx:start_idx+max_num]  # front to back
         self.gt_num = len(gt_lst)
         
         for idx, gt_path in enumerate(gt_lst):
