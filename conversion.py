@@ -19,8 +19,10 @@ def imread(im_path):
 def tensor2im(t):
     """Tensor -> im.
     
-    Input: (C H W) torch.float tensor.
-    Return: (H W C) np.uint8 array for cv2.imwrite.
+    Input: ([RGB] H W) torch.float tensor.
+    Return: (H W [BGR]) np.uint8 array for cv2.imwrite.
+
+    Note: RGB is default, since if_bgr2rgb of func:_totensor in dataset.py is True in default. 
     """
     t = t.cpu().detach()  # as copy in numpy
 
