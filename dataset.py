@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 
 from .conversion import bgr2rgb
 
-def _paired_random_crop(img_gts, img_lqs, h_gt, w_gt, scale=1):
+def _paired_random_crop(img_gts, img_lqs, h_gt_patch, w_gt_patch, scale=1):
     """Apply the same cropping to GT and LQ image pairs.
 
     scale: cropped lq patch can be smaller than the cropped gt patch.
@@ -25,10 +25,11 @@ def _paired_random_crop(img_gts, img_lqs, h_gt, w_gt, scale=1):
 
     h_lq, w_lq, _ = img_lqs[0].shape
     h_gt, w_gt, _ = img_gts[0].shape
-    h_lq_patch, w_lq_patch = h_gt // scale, w_gt // scale
+
+    h_lq_patch, w_lq_patch = h_gt_patch // scale, w_gt_patch // scale
 
     assert (h_gt == h_lq * scale) and (w_gt == w_lq * scale), 'Wrong scale!'
-    assert (h_lq >= h_lq_patch) and (w_lq >= w_lq_patch), 'Target patch is larger than the input image!'
+    assert (h_gt >= h_gt_patch) and (w_gt >= w_gt_patch), 'Target patch is larger than the input image!'
 
     # randomly choose top and left coordinates for lq patch
     top_lq = random.randint(0, h_lq - h_lq_patch)
@@ -41,7 +42,7 @@ def _paired_random_crop(img_gts, img_lqs, h_gt, w_gt, scale=1):
         for v in img_lqs
         ]
     img_gts = [
-        v[top_gt:top_gt + h_gt, left_gt:left_gt + w_gt, ...]
+        v[top_gt:top_gt + h_gt_patch, left_gt:left_gt + w_gt_patch, ...]
         for v in img_gts
         ]
     if len(img_gts) == 1:
@@ -323,7 +324,7 @@ class DiskIODataset(Dataset):
 
         # ndarray to tensor
         img_lst = [img_lq, img_gt]
-        img_lst = _totensor(img_lst)  # ([RGB] H W) float32
+        img_lst = _totensor(img_lst)  # ([RGB] H W) float32)
 
         return dict(
             lq=img_lst[0],
