@@ -277,7 +277,7 @@ class DiskIODataset(Dataset):
         self.opts_aug = aug['opts'] if (aug is not None) else None
 
         # dataset path
-        self.gt_path = Path(gt_path)
+        self.gt_path = Path(gt_path) if gt_path is not None else None
         self.lq_path = Path(lq_path)
         self.if_train = if_train
 
@@ -289,13 +289,14 @@ class DiskIODataset(Dataset):
             name=[],
             )
 
-        gt_lst = sorted(list(self.gt_path.glob('*.png')))
-        gt_lst = gt_lst[start_idx:start_idx+max_num]  # front to back
-        self.gt_num = len(gt_lst)
+        lq_lst = sorted(list(self.lq_path.glob('*.png')))
+        if max_num == '-1':
+            lq_lst = lq_lst[start_idx:start_idx+max_num]  # front to back
+        self.im_num = len(lq_lst)
         
-        for idx, gt_path in enumerate(gt_lst):
-            name = gt_path.stem  # no .png
-            lq_path = self.lq_path / (name + '.png')
+        for idx, lq_path in enumerate(lq_lst):
+            name = lq_path.stem  # no .png
+            gt_path = self.gt_path / (name + '.png') if self.gt_path is not None else None
             self.data_info['idx'].append(idx)
             self.data_info['gt_path'].append(gt_path)
             self.data_info['lq_path'].append(lq_path)
@@ -308,10 +309,12 @@ class DiskIODataset(Dataset):
         return img_np
 
     def __getitem__(self, idx):
-        img_gt = self._read_img(self.data_info['gt_path'][idx])  # (H W [BGR]) uint8
+        gt_path = self.data_info['gt_path'][idx]
+        img_gt = self._read_img(gt_path) if gt_path is not None else None  # (H W [BGR]) uint8
         img_lq = self._read_img(self.data_info['lq_path'][idx])
 
         # augmentation for training data
+        # suppose that img_gt is not None
         if self.if_train:
             img_gt, img_lq = _paired_random_crop(
                 img_gt, img_lq, self.opts_aug['gt_h'], self.opts_aug['gt_w'],
@@ -323,18 +326,19 @@ class DiskIODataset(Dataset):
             img_lq, img_gt = img_lst[:]
 
         # ndarray to tensor
-        img_lst = [img_lq, img_gt]
+        img_lst = [img_lq, img_gt] if img_gt is not None else [img_lq]
         img_lst = _totensor(img_lst)  # ([RGB] H W) float32)
 
+        gt = img_lst[1] if img_gt is not None else None
         return dict(
             lq=img_lst[0],
-            gt=img_lst[1],
+            gt=gt,
             name=self.data_info['name'][idx], # dataloader will return it as a list (len is batch size)
             idx=self.data_info['idx'][idx], # dataloader will return it as list-like tensor instead of numpy array (len is batch size)
             )
 
     def __len__(self):
-        return self.gt_num
+        return self.im_num
 
 """unfinished
 class LMDBIODataset(Dataset):
