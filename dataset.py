@@ -329,7 +329,7 @@ class DiskIODataset(Dataset):
         img_lst = [img_lq, img_gt] if img_gt is not None else [img_lq]
         img_lst = _totensor(img_lst)  # ([RGB] H W) float32)
 
-        gt = img_lst[1] if img_gt is not None else None
+        gt = img_lst[1] if img_gt is not None else []
         return dict(
             lq=img_lst[0],
             gt=gt,
