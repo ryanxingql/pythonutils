@@ -63,6 +63,8 @@ def arg2dict():
     
     with open(args.opt_path, 'r') as fp:
         opts_dict = yaml.load(fp, Loader=yaml.FullLoader)
+        case = opts_dict['case']
+        opts_dict = opts_dict[case]
 
     return opts_dict, args.local_rank
 
