@@ -19,12 +19,20 @@ def init_dist(local_rank=0, backend='nccl'):
 # Loss
 # ===
 
-loss_lst = ['CharbonnierLoss', 'GANLoss', 'RelativisticGANLoss', 'VGGLoss']
+loss_lst = ['CharbonnierLoss', 'GANLoss', 'RelativisticGANLoss', 'VGGLoss', 'MSELoss']
 
 def return_loss_func(name, opts):
     assert (name in loss_lst), '> Unsupported loss fn!'
     loss_func_cls = globals()[name]
     return loss_func_cls(**opts)
+
+class MSELoss(torch.nn.Module):
+    def __init__(self, reduction='mean'):
+        super().__init__()
+        self.loss = nn.MSELoss(reduction=reduction)
+    
+    def forward(self, inp, ref):
+        return self.loss(inp, ref)
 
 class CharbonnierLoss(torch.nn.Module):
     def __init__(self, eps=1e-6):
