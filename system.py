@@ -52,8 +52,12 @@ def arg2dict():
     """Receives args by argparse and YAML -> return dict."""
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--opt_path', type=str, default='option.yml', 
+        '--opt', type=str, default='option.yml', 
         help='Path to option YAML file.'
+        )
+    parser.add_argument(
+        '--case', type=str, default='v1', 
+        help='case for option.'
         )
     parser.add_argument(
         '--local_rank', type=int, default=0, 
@@ -63,8 +67,7 @@ def arg2dict():
     
     with open(args.opt_path, 'r') as fp:
         opts_dict = yaml.load(fp, Loader=yaml.FullLoader)
-        case = opts_dict['case']
-        opts_dict = opts_dict[case]
+        opts_dict = opts_dict[args.case]
 
     return opts_dict, args.local_rank
 
