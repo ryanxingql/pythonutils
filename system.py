@@ -65,7 +65,7 @@ def arg2dict():
         )
     args = parser.parse_args()
     
-    with open(args.opt_path, 'r') as fp:
+    with open(args.opt, 'r') as fp:
         opts_dict = yaml.load(fp, Loader=yaml.FullLoader)
         opts_dict = opts_dict[args.case]
 
