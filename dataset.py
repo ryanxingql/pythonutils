@@ -324,11 +324,11 @@ class DiskIODataset(Dataset):
         # suppose that img_gt is not None
         if self.if_train:
             img_gt, img_lq = _paired_random_crop(
-                img_gt, img_lq, self.opts_aug['gt_h'], self.opts_aug['gt_w'],
+                img_gt, img_lq, self.opts_aug['gt_h'], self.opts_aug['gt_w'], if_center=False,
                 )
             img_lst = [img_lq, img_gt] # gt is augmented jointly with lq
             img_lst = _augment(
-                img_lst, self.opts_aug['if_flip'], self.opts_aug['if_rot'], if_center=False,
+                img_lst, self.opts_aug['if_flip'], self.opts_aug['if_rot'],
                 )  # randomly crop
             img_lq, img_gt = img_lst[:]
         elif self.opts_test_crop is not None:
