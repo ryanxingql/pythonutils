@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 
 from .conversion import bgr2rgb
 
-def _paired_random_crop(img_gts, img_lqs, h_gt_patch, w_gt_patch, scale=1):
+def _paired_random_crop(img_gts, img_lqs, h_gt_patch, w_gt_patch, scale=1, if_center=False):
     """Apply the same cropping to GT and LQ image pairs.
 
     scale: cropped lq patch can be smaller than the cropped gt patch.
@@ -32,8 +32,12 @@ def _paired_random_crop(img_gts, img_lqs, h_gt_patch, w_gt_patch, scale=1):
     assert (h_gt >= h_gt_patch) and (w_gt >= w_gt_patch), 'Target patch is larger than the input image!'
 
     # randomly choose top and left coordinates for lq patch
-    top_lq = random.randint(0, h_lq - h_lq_patch)
-    left_lq = random.randint(0, w_lq - w_lq_patch)
+    if if_center:
+        top_lq = (h_lq - h_lq_patch) // 2
+        left_lq = (w_lq - w_lq_patch) // 2
+    else:
+        top_lq = random.randint(0, h_lq - h_lq_patch)
+        left_lq = random.randint(0, w_lq - w_lq_patch)
     top_gt, left_gt = int(top_lq * scale), int(left_lq * scale)
 
     # crop
@@ -271,10 +275,11 @@ class DiskIODataset(Dataset):
     max_num: clip the dataset.
     if_train: if True, crop the images.
     """
-    def __init__(self, gt_path, lq_path, if_train, max_num=-1, start_idx=0, aug=None):
+    def __init__(self, gt_path, lq_path, if_train, max_num=-1, start_idx=0, aug=None, test_crop=None):
         super().__init__()
 
         self.opts_aug = aug['opts'] if (aug is not None) else None
+        self.opts_test_crop = test_crop if ((test_crop is not None) and (test_crop['if_crop'] == True)) else None
 
         # dataset path
         self.gt_path = Path(gt_path) if gt_path is not None else None
@@ -323,9 +328,13 @@ class DiskIODataset(Dataset):
                 )
             img_lst = [img_lq, img_gt] # gt is augmented jointly with lq
             img_lst = _augment(
-                img_lst, self.opts_aug['if_flip'], self.opts_aug['if_rot']
-                )
+                img_lst, self.opts_aug['if_flip'], self.opts_aug['if_rot'], if_center=False,
+                )  # randomly crop
             img_lq, img_gt = img_lst[:]
+        elif self.opts_test_crop is not None:
+            img_gt, img_lq = _paired_random_crop(
+                img_gt, img_lq, self.opts_test_crop['gt_h'], self.opts_test_crop['gt_w'], if_center=True,
+                )            
 
         # ndarray to tensor
         img_lst = [img_lq, img_gt] if img_gt is not None else [img_lq]
