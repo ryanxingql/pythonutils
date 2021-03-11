@@ -136,7 +136,7 @@ class RelativisticGANLoss(nn.Module):
             loss_fake /= float(inter_step)  # multiple backwards and step once, thus mean
             loss_fake.backward()
         
-            return (loss_real + loss_fake).item()
+            return loss_real.item(), loss_fake.item()
 
 class _VGGFeatureExtractor(nn.Module):
     """VGG network for feature extraction.
