@@ -92,7 +92,7 @@ class BaseAlg():
             self.model.module_lst[mod_item].cuda()
             self.model.module_lst[mod_item] = nn.SyncBatchNorm.convert_sync_batchnorm(
                 self.model.module_lst[mod_item]
-                )  # convert all bn to syncbatchnorm
+                )  # convert all bn to syncbatchnorm before wrapping network with DDP
             self.model.module_lst[mod_item] = DDP(
                 self.model.module_lst[mod_item],
                 device_ids=[torch.cuda.current_device()],
