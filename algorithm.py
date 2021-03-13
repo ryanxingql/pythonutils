@@ -225,7 +225,8 @@ class BaseAlg():
             elif 'sched_' in load_item:
                 item_name = load_item[6:]
                 self.sched_lst[item_name].load_state_dict(state_dict)
-            
+                
+        print(f'> {ckp_load_path} loaded.')
         return states['iter']
 
     def print_net(self, log_fp):
