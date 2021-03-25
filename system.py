@@ -1,11 +1,9 @@
-import os
 import time
 import yaml
 import torch
 import random
 import argparse
 import numpy as np
-from pathlib import Path
 
 # ===
 # Time & Recode
@@ -54,15 +52,15 @@ def arg2dict():
     parser.add_argument(
         '--opt', type=str, default='option.yml', 
         help='Path to option YAML file.'
-        )
+    )
     parser.add_argument(
         '--case', type=str, default='v1', 
         help='case for option.'
-        )
+    )
     parser.add_argument(
         '--local_rank', type=int, default=0, 
         help='Distributed launcher requires.'
-        )
+    )
     args = parser.parse_args()
     
     with open(args.opt, 'r') as fp:
@@ -87,11 +85,11 @@ def mkdir_archived(log_dir):
     if log_dir.exists():  # if exists, rename the existing folder
         log_dir_pre = log_dir.parents[0]
         log_dir_name = log_dir.parts[-1]
-        log_dir_new = log_dir_pre / f'{log_dir_name}_v1'
+        log_dir_new = log_dir_pre / f'{log_dir_name}-v1'
         vs = 1
         while log_dir_new.exists():
             vs += 1
-            log_dir_new = log_dir_pre / f'{log_dir_name}_v{vs}'
+            log_dir_new = log_dir_pre / f'{log_dir_name}-v{vs}'
         log_dir.rename(log_dir_new) 
     log_dir.mkdir(parents=True)  # make log dir
 

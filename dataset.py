@@ -39,11 +39,11 @@ def _paired_random_crop(img_gts, img_lqs, h_patch, w_patch, if_center=False):
     img_lqs = [
         v[top_idx:top_idx + h_patch, left_idx:left_idx + w_patch, ...]
         for v in img_lqs
-        ]
+    ]
     img_gts = [
         v[top_idx:top_idx + h_patch, left_idx:left_idx + w_patch, ...]
         for v in img_gts
-        ]
+    ]
     if len(img_gts) == 1:
         img_gts = img_gts[0]
     if len(img_lqs) == 1:
@@ -71,7 +71,8 @@ def _augment(img_lst, if_flip=True, if_rot=True):
         0,  # 90 degrees
         1,  # 180 degrees
         2,  # 270 degrees
-        ])
+        ]
+    )
     img_lst = [_main(img) for img in img_lst]
     if len(img_lst) == 1:
         img_lst = img_lst[0]
@@ -118,7 +119,7 @@ class DistSampler(Sampler):
     """
     def __init__(
             self, ds_size, num_replicas=None, rank=None, ratio=1
-            ):
+        ):
         self.ds_size = ds_size
         self.num_replicas = num_replicas
         self.rank = rank
@@ -126,7 +127,7 @@ class DistSampler(Sampler):
         # enlarged by ratio, and then divided by num_replicas
         self.num_samples = math.ceil(
             ds_size * ratio / self.num_replicas
-            )
+        )
         self.total_size = self.num_samples * self.num_replicas
 
     def set_epoch(self, epoch):
@@ -155,7 +156,7 @@ def create_dataloader(
         sampler=None,
         rank=None,
         seed=None,
-        ):
+    ):
     """Create dataloader.
     
     Dataloader is created for each rank.
@@ -170,7 +171,7 @@ def create_dataloader(
             shuffle=False,  # sampler will shuffle at __iter__
             drop_last=True,
             pin_memory=True,  # must be True for prefetcher
-            )
+        )
         if sampler is None:
             dataloader_args['shuffle'] = True
         dataloader_args['worker_init_fn'] = partial(
@@ -178,7 +179,7 @@ def create_dataloader(
             num_workers=num_worker, 
             rank=rank,
             seed=seed
-            )
+        )
     else:
         dataloader_args = dict(
             dataset=dataset,
@@ -186,7 +187,7 @@ def create_dataloader(
             num_workers=0,
             shuffle=False,
             pin_memory=True,
-            )
+        )
     return DataLoader(**dataloader_args)
 
 def _worker_init_fn(worker_id, num_workers, rank, seed):
@@ -287,7 +288,7 @@ class DiskIODataset(Dataset):
             lq_path=[],
             idx=[],
             name=[],
-            )
+        )
 
         lq_lst = sorted(list(self.lq_path.glob('*.png')))
         if max_num != -1:
@@ -321,21 +322,21 @@ class DiskIODataset(Dataset):
             assert img_gt is not None, '> supervised training!'
             img_gt, img_lq = _paired_random_crop(
                 img_gt, img_lq, self.opts_aug['gt_h'], self.opts_aug['gt_w'], if_center=False,
-                )
+            )
             img_lst = [img_lq, img_gt] # gt is augmented jointly with lq
             img_lst = _augment(
                 img_lst, self.opts_aug['if_flip'], self.opts_aug['if_rot'],
-                )  # randomly crop
+            )  # randomly crop
             img_lq, img_gt = img_lst[:]
         elif self.opts_test_crop is not None:
             if gt_path is not None:
                 img_gt, img_lq = _paired_random_crop(
                     img_gt, img_lq, self.opts_test_crop['h'], self.opts_test_crop['w'], if_center=True,
-                    )
+                )
             else:
                 img_gt, img_lq = _paired_random_crop(
                     img_lq, img_lq, self.opts_test_crop['h'], self.opts_test_crop['w'], if_center=True,
-                    )
+                )
 
         # ndarray to tensor
         img_lst = [img_lq, img_gt] if img_gt is not None else [img_lq]
@@ -347,7 +348,7 @@ class DiskIODataset(Dataset):
             gt=gt,
             name=self.data_info['name'][idx], # dataloader will return it as a list (len is batch size)
             idx=self.data_info['idx'][idx], # dataloader will return it as list-like tensor instead of numpy array (len is batch size)
-            )
+        )
 
     def __len__(self):
         return self.im_num

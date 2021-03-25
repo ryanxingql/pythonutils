@@ -1,4 +1,3 @@
-import math
 import torch
 import torch.nn as nn
 import torch.distributed as dist
@@ -54,7 +53,7 @@ class GANLoss(nn.Module):
             self,
             real_label_val=1.0,
             fake_label_val=0.0,
-            ):
+        ):
         """
         Args:
             real_label_val (float): The value for real label. Default: 1.0.
@@ -74,7 +73,7 @@ class GANLoss(nn.Module):
         """
         target_val = (
             self.real_label_val if if_real else self.fake_label_val
-            )
+        )
         target_label = input_t.new_ones(input_t.size()) * target_val
         loss = self.loss(input_t, target_label)
         return loss
@@ -84,7 +83,7 @@ class RelativisticGANLoss(nn.Module):
             self,
             real_label_val=1.,
             fake_label_val=0.,
-            ):
+        ):
         """
         gan_loss_func(x - y, target)
         if x is more real than y, then two d out distance aims to be 1. for dis.
@@ -164,7 +163,7 @@ class _VGGFeatureExtractor(nn.Module):
             requires_grad=False,
             remove_pooling=False,
             pooling_stride=2
-            ):
+        ):
         super().__init__()
 
         NAMES = {
@@ -194,8 +193,8 @@ class _VGGFeatureExtractor(nn.Module):
                 'conv3_1', 'relu3_1', 'conv3_2', 'relu3_2', 'conv3_3', 'relu3_3', 'conv3_4', 'relu3_4', 'pool3',
                 'conv4_1', 'relu4_1', 'conv4_2', 'relu4_2', 'conv4_3', 'relu4_3', 'conv4_4', 'relu4_4', 'pool4',
                 'conv5_1', 'relu5_1', 'conv5_2', 'relu5_2', 'conv5_3', 'relu5_3', 'conv5_4', 'relu5_4', 'pool5'
-                ]
-            }
+            ],
+        }
 
         self.layer_name_list = layer_name_list
         self.use_input_norm = use_input_norm
@@ -300,7 +299,7 @@ class VGGLoss(nn.Module):
             use_input_norm=True,
             perceptual_weight=1.,
             style_weight=0.,
-            ):
+        ):
         super().__init__()
         self.perceptual_weight = perceptual_weight
         self.style_weight = style_weight
@@ -310,10 +309,10 @@ class VGGLoss(nn.Module):
         self.vgg = _VGGFeatureExtractor(
             layer_name_list=list(
                 layer_weights.keys()
-                ),
+            ),
             vgg_type=vgg_type,
             use_input_norm=use_input_norm
-            )
+        )
 
         self.criterion = CharbonnierLoss()
 
@@ -348,7 +347,7 @@ class VGGLoss(nn.Module):
             for k in x_features.keys():
                 percep_loss += self.criterion(
                     x_features[k], gt_features[k]
-                    ) * self.layer_weights[k]
+                ) * self.layer_weights[k]
             percep_loss *= self.perceptual_weight
 
         # calculate style loss
@@ -358,7 +357,7 @@ class VGGLoss(nn.Module):
                 style_loss += self.criterion(
                     self._gram_mat(x_features[k]),
                     self._gram_mat(gt_features[k])
-                    ) * self.layer_weights[k]
+                ) * self.layer_weights[k]
             style_loss *= self.style_weight
 
         return percep_loss + style_loss
