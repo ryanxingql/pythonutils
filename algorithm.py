@@ -6,7 +6,7 @@ from collections import OrderedDict
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from .conversion import tensor2im
-from .system import print_n_log, Recoder
+from .system import print_n_log, Recoder, Timer
 from .metrics import return_crit_func
 from .deep_learning import return_optimizer, return_loss_func, return_scheduler
 
@@ -50,11 +50,11 @@ class BaseAlg():
                 self.crit_lst = None
 
         if self.if_train:
-            # 1/3: train from scratch
+            # train from scratch
             if not self.opts_dict['train']['load_state']['if_load']:
                 self.done_niter = 0
                 self.best_val_perfrm = None
-            # 2/3: train from ckp
+            # resume training from ckp
             else:
                 load_item_lst = ['module_net', 'optim_net',]
                 
@@ -66,7 +66,7 @@ class BaseAlg():
                     load_item_lst=load_item_lst,
                     if_dist=True,
                 )
-        # 3/3: test
+        # resume ckp for test
         else:
             load_item_lst = ['module_net']
             self.done_niter, _ = self.load_state(
@@ -282,6 +282,8 @@ class BaseAlg():
         self.set_eval_mode()
         msg = ''
         write_dict_lst = []
+        timer = Timer()
+
         with torch.no_grad():
             flag_save_im = True
 
@@ -294,6 +296,7 @@ class BaseAlg():
 
                     pbar = tqdm(total=nsample_test, ncols=80)
                     recorder = Recoder()
+                    
                     test_fetcher.reset()
                     
                     test_data = test_fetcher.next()
@@ -304,8 +307,13 @@ class BaseAlg():
                         im_name = test_data['name'][0]  # assume bs=1
                         
                         if mod == 'normal':
+                            timer.record()
                             im_out = self.model.module_lst['net'](im_lq).clamp_(0., 1.)
-                            perfm = crit_fn(torch.squeeze(im_out, 0), torch.squeeze(im_gt, 0))
+                            timer.record_inter()
+
+                            perfm = crit_fn(
+                                torch.squeeze(im_out, 0), torch.squeeze(im_gt, 0)
+                            )
                             
                             if flag_save_im and (img_save_folder is not None):  # save im
                                 im = tensor2im(torch.squeeze(im_out, 0))
@@ -313,7 +321,11 @@ class BaseAlg():
                                 cv2.imwrite(str(save_path), im)
                         
                         elif mod == 'baseline':
-                            perfm = crit_fn(torch.squeeze(im_lq, 0), torch.squeeze(im_gt, 0))
+                            timer.record()
+                            perfm = crit_fn(
+                                torch.squeeze(im_lq, 0), torch.squeeze(im_gt, 0)
+                            )
+                            timer.record_inter()
                         recorder.record(perfm)
                         
                         _msg = f'{im_name}: [{perfm:.3e}] {crit_unit:s}'
@@ -328,9 +340,10 @@ class BaseAlg():
                     
                     # cal ave
                     ave_perfm = recorder.get_ave()
-                    write_dict_lst.append(dict(
-                        tag=f'{crit_name} (val)',
-                        scalar=ave_perfm,
+                    write_dict_lst.append(
+                        dict(
+                            tag=f'{crit_name} (val)',
+                            scalar=ave_perfm,
                         )
                     )  # only for validation during training
                     pbar.close()
@@ -345,9 +358,9 @@ class BaseAlg():
                 if if_train:
                     return report_perfrm, msg.rstrip(), write_dict_lst
                 else:
-                    return msg.rstrip(), write_dict_lst
+                    return msg.rstrip(), write_dict_lst, timer.get_ave_inter()
         
-            else:  # only get tar
+            else:  # only get tar (available only for test)
                 pbar = tqdm(total=nsample_test, ncols=80)
                 test_fetcher.reset()
                 test_data = test_fetcher.next()
@@ -356,8 +369,11 @@ class BaseAlg():
                 while test_data is not None:
                     im_lq = test_data['lq'].cuda(non_blocking=True)  # assume bs=1
                     im_name = test_data['name'][0]  # assume bs=1
+
+                    timer.record()
                     im_out = self.model.module_lst['net'](im_lq).clamp_(0., 1.)
-                    
+                    timer.record_inter()
+
                     if img_save_folder is not None:  # save im
                         im = tensor2im(torch.squeeze(im_out, 0))
                         save_path = img_save_folder / (str(im_name) + '.png')
@@ -369,7 +385,7 @@ class BaseAlg():
                 pbar.close()
                 msg += f'> no ground-truth data; test done.\n'
 
-                return msg.rstrip(), write_dict_lst
+                return msg.rstrip(), write_dict_lst, timer.get_ave_inter()
 
     def update_net_params(self, data, flag_step, inter_step):
         """available for simple loss func. for complex loss such as relativeganloss, please write your own func."""

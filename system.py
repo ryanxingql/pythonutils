@@ -19,12 +19,20 @@ class Timer():
     
     def reset(self):
         self.time_lst = [time.time()]
+        self.inter_lst = []
 
     def record(self):
         self.time_lst.append(time.time())
 
+    def record_inter(self):
+        self.record()
+        self.inter_lst.append(self.time_lst[-1] - self.time_lst[-2])
+
     def get_inter(self):
         return time.time() - self.time_lst[-1]
+
+    def get_ave_inter(self):
+        return np.mean(self.inter_lst)
 
     def get_total(self):
         return time.time() - self.time_lst[0]
@@ -40,7 +48,7 @@ class Recoder():
         self.result_lst.append(result)
     
     def get_ave(self):
-        return sum(self.result_lst) / float(len(self.result_lst))
+        return np.mean(self.result_lst)
 
 # ===
 # IO
