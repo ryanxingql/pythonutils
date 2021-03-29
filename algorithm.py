@@ -355,10 +355,10 @@ class BaseAlg():
                     if crit_if_focus:
                         report_perfrm = ave_perfm
                 
-                if if_train:
+                if if_train:  # validation
                     return report_perfrm, msg.rstrip(), write_dict_lst
-                else:
-                    return msg.rstrip(), write_dict_lst, timer.get_ave_inter()
+                else:  # test
+                    return msg.rstrip(), timer.get_ave_inter()
         
             else:  # only get tar (available only for test)
                 pbar = tqdm(total=nsample_test, ncols=80)
@@ -385,7 +385,7 @@ class BaseAlg():
                 pbar.close()
                 msg += f'> no ground-truth data; test done.\n'
 
-                return msg.rstrip(), write_dict_lst, timer.get_ave_inter()
+                return msg.rstrip(), timer.get_ave_inter()
 
     def update_net_params(self, data, flag_step, inter_step):
         """available for simple loss func. for complex loss such as relativeganloss, please write your own func."""
