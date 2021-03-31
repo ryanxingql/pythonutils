@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
-from tqdm import tqdm
 from cv2 import cv2
+from tqdm import tqdm
 from collections import OrderedDict
 from torch.nn.parallel import DistributedDataParallel as DDP
 
@@ -387,7 +387,13 @@ class BaseAlg():
 
                 return msg.rstrip(), timer.get_ave_inter()
 
-    def update_net_params(self, data, flag_step, inter_step):
+    def update_net_params(
+            self,
+            data,
+            flag_step,
+            inter_step,
+            additional,
+        ):
         """available for simple loss func. for complex loss such as relativeganloss, please write your own func."""
         data_lq = data['lq'].cuda(non_blocking=True)
         data_gt = data['gt'].cuda(non_blocking=True)
@@ -425,14 +431,19 @@ class BaseAlg():
         for sched_item in self.sched_lst:
             self.sched_lst[sched_item].step()
 
-    def update_params(self, data, iter, flag_step, inter_step):
+    def update_params(self, data, iter, flag_step, inter_step, additional=None):
         self.net_loss = 0.  # for recorder
         self.net_lr = None
         self.gen_im_lst = dict()
 
         for param in self.model.module_lst['net'].parameters():
             param.requires_grad = True
-        self.update_net_params(data=data, flag_step=flag_step, inter_step=inter_step)
+        self.update_net_params(
+            data=data,
+            flag_step=flag_step,
+            inter_step=inter_step,
+            additional=additional,
+        )
         
         msg = (
             f'net_lr: [{self.net_lr:.3e}]; '
