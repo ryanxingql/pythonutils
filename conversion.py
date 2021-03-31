@@ -87,7 +87,8 @@ mat1 = np.array([
     [  65.481,  128.553,   24.966],
     [ -37.797,  -74.203,  112.   ],
     [ 112.   ,  -93.786,  -18.214],
-    ]) / 225.
+    ]
+) / 225.
 
 mat2 = np.linalg.inv(mat1)
 
@@ -209,7 +210,9 @@ def yuv420p2444p(y, u, v):
 
 yuv_type_list = ['420p', '444p']
 
-def import_yuv(seq_path, h, w, tot_frm, yuv_type='420p', start_frm=0, only_y=True):
+def import_yuv(
+        seq_path, h, w, tot_frm, yuv_type='420p', start_frm=0, only_y=True
+    ):
     """Load Y, U, and V channels separately from a 8bit yuv420p video.
     
     Args:

@@ -14,7 +14,7 @@ class PCC():
             '0: no linear correlation. '
             '-1: total negative linear correlation. '
             'See: https://en.wikipedia.org/wiki/Pearson_correlation_coefficient'
-            )
+        )
     
     def cal_pcc_two_imgs(self, x, y):
         """Calculate Pearson correlation coefficient of two images.

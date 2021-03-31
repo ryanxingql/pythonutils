@@ -6,7 +6,7 @@ from collections import OrderedDict
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from .conversion import tensor2im
-from .system import print_n_log, Recorder
+from .system import print_n_log, Recoder, Timer
 from .metrics import return_crit_func
 from .deep_learning import return_optimizer, return_loss_func, return_scheduler
 
@@ -20,56 +20,60 @@ class BaseAlg():
             self.create_loss_func(
                 opts_dict=self.opts_dict['train']['loss'],
                 if_use_cuda=True,
-                )
+            )
             
             params_lst = dict(
                 net=self.model.module_lst['net'].parameters(),
-                )
+            )
             self.create_optimizer(
                 params_lst=params_lst,
                 opts_dict=self.opts_dict['train']['optimizer'],
-                )
+            )
 
             if self.if_sched:
                 optim_lst = dict(
                     net=self.optim_lst['net'],
-                    )
+                )
                 self.create_scheduler(
                     optim_lst=optim_lst,
                     opts_dict=self.opts_dict['train']['scheduler'],
-                    )
-
-        if self.opts_dict['test']['criterion'] is not None:
-            self.create_criterion(
-                opts_dict=self.opts_dict['test']['criterion']
                 )
+            self.create_criterion(
+                opts_dict=self.opts_dict['val']['criterion']
+            )
         else:
-            self.crit_lst = None
+            if self.opts_dict['test']['criterion'] is not None:
+                self.create_criterion(
+                    opts_dict=self.opts_dict['test']['criterion']
+                )
+            else:
+                self.crit_lst = None
 
         if self.if_train:
-            # 1/3: train from scratch
+            # train from scratch
             if not self.opts_dict['train']['load_state']['if_load']:
                 self.done_niter = 0
-            # 2/3: train from ckp
+                self.best_val_perfrm = None
+            # resume training from ckp
             else:
                 load_item_lst = ['module_net', 'optim_net',]
                 
                 if self.if_sched:
                     load_item_lst += ['sched_net',]
 
-                self.done_niter = self.load_state(
+                self.done_niter, self.best_val_perfrm = self.load_state(
                     ckp_load_path=self.opts_dict['train']['load_state']['ckp_load_path'],
                     load_item_lst=load_item_lst,
                     if_dist=True,
-                    )
-        # 3/3: test
+                )
+        # resume ckp for test
         else:
             load_item_lst = ['module_net']
-            self.done_niter = self.load_state(
+            self.done_niter, _ = self.load_state(
                 ckp_load_path=self.opts_dict['test']['ckp_load_path'],
                 load_item_lst=load_item_lst,
                 if_dist=True,
-                )
+            )
 
     def add_graph(self, writer, data):
         self.set_eval_mode()
@@ -85,18 +89,18 @@ class BaseAlg():
         opts_dict_ = dict(
             if_train=if_train,
             opts_dict=opts_dict,
-            )
+        )
         self.model = model_cls(**opts_dict_)
 
         for mod_item in self.model.module_lst:
             self.model.module_lst[mod_item].cuda()
             self.model.module_lst[mod_item] = nn.SyncBatchNorm.convert_sync_batchnorm(
                 self.model.module_lst[mod_item]
-                )  # convert all bn to syncbatchnorm before wrapping network with DDP
+            )  # convert all bn to syncbatchnorm before wrapping network with DDP
             self.model.module_lst[mod_item] = DDP(
                 self.model.module_lst[mod_item],
                 device_ids=[torch.cuda.current_device()],
-                )
+            )
 
     def create_criterion(self, opts_dict):
         """
@@ -111,10 +115,12 @@ class BaseAlg():
         for crit_item in opts_dict:
             fn = return_crit_func(crit_item, opts_dict[crit_item]['opts'])
             unit = opts_dict[crit_item]['unit']
+            if_focus = opts_dict[crit_item]['if_focus'] if 'if_focus' in opts_dict[crit_item] else False
             self.crit_lst[crit_item] = dict(
                 fn=fn,
                 unit=unit,
-                )
+                if_focus=if_focus,
+            )
 
     def create_loss_func(self, opts_dict, if_use_cuda=True):
         """
@@ -131,13 +137,13 @@ class BaseAlg():
             loss_func = return_loss_func(
                 name=loss_name,
                 opts=opts_dict[loss_name]['opts'],
-                )
+            )
             if if_use_cuda:
                 loss_func = loss_func.cuda()
             self.loss_lst[loss_name] = dict(
                 weight=opts_dict[loss_name]['weight'],
                 fn=loss_func,
-                )
+            )
 
     def create_optimizer(self, params_lst, opts_dict):
         """
@@ -158,7 +164,7 @@ class BaseAlg():
                 name=opts_dict[optim_item]['type'],
                 params=params_lst[optim_item],
                 opts=opts_dict[optim_item]['opts'],
-                )
+            )
             optim = return_optimizer(**opts_dict_)
             self.optim_lst[optim_item] = optim
 
@@ -177,7 +183,7 @@ class BaseAlg():
                 name=opts_dict[sched_item]['type'],
                 optim=optim_lst[sched_item],
                 opts=opts_dict[sched_item]['opts'],
-                )
+            )
             sched = return_scheduler(**opts_dict_)
             self.sched_lst[sched_item] = sched
 
@@ -227,19 +233,19 @@ class BaseAlg():
                 self.sched_lst[item_name].load_state_dict(state_dict)
                 
         print(f'> {ckp_load_path} loaded.')
-        return states['iter']
+        return states['iter'], states['best_val_perfrm']
 
     def print_net(self, log_fp):
         if hasattr(self.model, 'msg_lst'):
             for msg_key in self.model.msg_lst:
                 print_n_log(self.model.msg_lst[msg_key], log_fp)
 
-    def save_state(self, ckp_save_path, iter, if_sched):
+    def save_state(self, ckp_save_path, best_val_perfrm, iter, if_sched):
         """
         ckp_save_path
         -> save iter, modules, optims and scheds to ckp_save_path as states
         """
-        states = dict(iter=iter)
+        states = dict(iter=iter, best_val_perfrm=best_val_perfrm)
         for mod_item in self.model.module_lst:
             states[f'module_{mod_item}'] = self.model.module_lst[mod_item].state_dict()
         for optim_item in self.optim_lst:
@@ -264,8 +270,8 @@ class BaseAlg():
             self.model.module_lst[mod_key].train()
 
     def test(
-            self, test_fetcher, nsample_test, mod='normal', if_return_each=False, img_save_folder=None
-            ):
+            self, test_fetcher, nsample_test, mod='normal', if_return_each=False, img_save_folder=None, if_train=True,
+        ):
         """
         baseline mod: test between src and dst.
         normal mod: test between src and tar.
@@ -276,16 +282,21 @@ class BaseAlg():
         self.set_eval_mode()
         msg = ''
         write_dict_lst = []
+        timer = Timer()
+
         with torch.no_grad():
             flag_save_im = True
 
+            # assume that validation must have criterions
             if self.crit_lst is not None:
                 for crit_name in self.crit_lst:
                     crit_fn = self.crit_lst[crit_name]['fn']
                     crit_unit = self.crit_lst[crit_name]['unit']
+                    crit_if_focus = self.crit_lst[crit_name]['if_focus']
 
                     pbar = tqdm(total=nsample_test, ncols=80)
-                    recorder = Recorder()
+                    recorder = Recoder()
+                    
                     test_fetcher.reset()
                     
                     test_data = test_fetcher.next()
@@ -296,8 +307,13 @@ class BaseAlg():
                         im_name = test_data['name'][0]  # assume bs=1
                         
                         if mod == 'normal':
+                            timer.record()
                             im_out = self.model.module_lst['net'](im_lq).clamp_(0., 1.)
-                            perfm = crit_fn(torch.squeeze(im_out, 0), torch.squeeze(im_gt, 0))
+                            timer.record_inter()
+
+                            perfm = crit_fn(
+                                torch.squeeze(im_out, 0), torch.squeeze(im_gt, 0)
+                            )
                             
                             if flag_save_im and (img_save_folder is not None):  # save im
                                 im = tensor2im(torch.squeeze(im_out, 0))
@@ -305,7 +321,11 @@ class BaseAlg():
                                 cv2.imwrite(str(save_path), im)
                         
                         elif mod == 'baseline':
-                            perfm = crit_fn(torch.squeeze(im_lq, 0), torch.squeeze(im_gt, 0))
+                            timer.record()
+                            perfm = crit_fn(
+                                torch.squeeze(im_lq, 0), torch.squeeze(im_gt, 0)
+                            )
+                            timer.record_inter()
                         recorder.record(perfm)
                         
                         _msg = f'{im_name}: [{perfm:.3e}] {crit_unit:s}'
@@ -320,17 +340,27 @@ class BaseAlg():
                     
                     # cal ave
                     ave_perfm = recorder.get_ave()
-                    write_dict_lst.append(dict(
-                        tag=f'{crit_name} (Test Set)',
-                        scalar=ave_perfm,
-                        ))
+                    write_dict_lst.append(
+                        dict(
+                            tag=f'{crit_name} (val)',
+                            scalar=ave_perfm,
+                        )
+                    )  # only for validation during training
                     pbar.close()
                     if mod == 'normal':
                         msg += f'> {crit_name}: [{ave_perfm:.3e}] {crit_unit}\n'
                     elif mod == 'baseline':
                         msg += f'> baseline {crit_name}: [{ave_perfm:.3e}] {crit_unit}\n'
+                    
+                    if crit_if_focus:
+                        report_perfrm = ave_perfm
+                
+                if if_train:  # validation
+                    return report_perfrm, msg.rstrip(), write_dict_lst
+                else:  # test
+                    return msg.rstrip(), timer.get_ave_inter()
         
-            else:  # only get tar
+            else:  # only get tar (available only for test)
                 pbar = tqdm(total=nsample_test, ncols=80)
                 test_fetcher.reset()
                 test_data = test_fetcher.next()
@@ -339,8 +369,11 @@ class BaseAlg():
                 while test_data is not None:
                     im_lq = test_data['lq'].cuda(non_blocking=True)  # assume bs=1
                     im_name = test_data['name'][0]  # assume bs=1
+
+                    timer.record()
                     im_out = self.model.module_lst['net'](im_lq).clamp_(0., 1.)
-                    
+                    timer.record_inter()
+
                     if img_save_folder is not None:  # save im
                         im = tensor2im(torch.squeeze(im_out, 0))
                         save_path = img_save_folder / (str(im_name) + '.png')
@@ -350,9 +383,9 @@ class BaseAlg():
                     test_data = test_fetcher.next()
 
                 pbar.close()
-                msg += f'> No ground-truth data; test done.\n'
+                msg += f'> no ground-truth data; test done.\n'
 
-        return msg.rstrip(), write_dict_lst
+                return msg.rstrip(), timer.get_ave_inter()
 
     def update_net_params(self, data, flag_step, inter_step):
         """available for simple loss func. for complex loss such as relativeganloss, please write your own func."""
@@ -364,7 +397,7 @@ class BaseAlg():
             data_lq=data['lq'][:3],
             data_gt=data['gt'][:3],
             generated=data_out.detach()[:3].cpu().clamp_(0., 1.),
-            )  # for torch.utils.tensorboard.writer.SummaryWriter.add_images: NCHW tensor is ok
+        )  # for torch.utils.tensorboard.writer.SummaryWriter.add_images: NCHW tensor is ok
 
         loss_total = 0
         for loss_item in self.loss_lst.keys():
@@ -372,7 +405,7 @@ class BaseAlg():
             opts_dict_ = dict(
                 inp=data_out,
                 ref=data_gt,
-                )
+            )
             loss_unweighted = loss_dict['fn'](**opts_dict_)
             setattr(self, loss_item, loss_unweighted.item())  # for recorder
             loss_ = loss_dict['weight'] * loss_unweighted
@@ -404,15 +437,16 @@ class BaseAlg():
         msg = (
             f'net_lr: [{self.net_lr:.3e}]; '
             f'net_loss: [{self.net_loss:.3e}]; '
-            )
+        )
         write_dict_lst = [
             dict(tag='net_loss', scalar=self.net_loss),
             dict(tag='net_lr', scalar=self.net_lr),
-            ]
+        ]
         for loss_item in self.loss_lst:
             write_dict_lst.append(dict(
                 tag=loss_item,
                 scalar=getattr(self, loss_item),
-                ))
+                )
+            )
             msg += f'{loss_item}: [{getattr(self, loss_item):.3e}]; '
         return msg[:-2], write_dict_lst, self.gen_im_lst
