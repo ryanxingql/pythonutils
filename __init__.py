@@ -4,7 +4,7 @@ from .dataset import DistSampler, create_dataloader, CPUPrefetcher, CUDAPrefetch
 from .deep_learning import init_dist, return_loss_func, return_optimizer, return_scheduler
 from .metrics import PCC, return_crit_func
 from .network import BaseNet
-from .system import get_timestr, Timer, Recoder, arg2dict, print_n_log, mkdir_archived, set_random_seed
+from .system import get_timestr, Timer, Recorder, arg2dict, print_n_log, mkdir_archived, set_random_seed
 
 __all__ = [
     'BaseAlg',
@@ -13,5 +13,5 @@ __all__ = [
     'init_dist', 'return_loss_func', 'return_optimizer', 'return_scheduler',
     'PCC', 'return_crit_func',
     'BaseNet',
-    'get_timestr', 'Timer', 'Recoder', 'arg2dict', 'print_n_log', 'mkdir_archived', 'set_random_seed',
+    'get_timestr', 'Timer', 'Recorder', 'arg2dict', 'print_n_log', 'mkdir_archived', 'set_random_seed',
     ]

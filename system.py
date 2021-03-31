@@ -37,7 +37,7 @@ class Timer():
     def get_total(self):
         return time.time() - self.time_lst[0]
 
-class Recoder():
+class Recorder():
     def __init__(self):
         self.reset()
     
