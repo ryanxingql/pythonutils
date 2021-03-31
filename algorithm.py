@@ -6,7 +6,7 @@ from collections import OrderedDict
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from .conversion import tensor2im
-from .system import print_n_log, Recoder
+from .system import print_n_log, Recorder
 from .metrics import return_crit_func
 from .deep_learning import return_optimizer, return_loss_func, return_scheduler
 
@@ -285,7 +285,7 @@ class BaseAlg():
                     crit_unit = self.crit_lst[crit_name]['unit']
 
                     pbar = tqdm(total=nsample_test, ncols=80)
-                    recorder = Recoder()
+                    recorder = Recorder()
                     test_fetcher.reset()
                     
                     test_data = test_fetcher.next()
