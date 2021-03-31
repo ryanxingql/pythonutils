@@ -6,7 +6,7 @@ from collections import OrderedDict
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from .conversion import tensor2im
-from .system import print_n_log, Recoder, Timer
+from .system import print_n_log, Recorder, Timer
 from .metrics import return_crit_func
 from .deep_learning import return_optimizer, return_loss_func, return_scheduler
 
@@ -295,7 +295,7 @@ class BaseAlg():
                     crit_if_focus = self.crit_lst[crit_name]['if_focus']
 
                     pbar = tqdm(total=nsample_test, ncols=80)
-                    recorder = Recoder()
+                    recorder = Recorder()
                     
                     test_fetcher.reset()
                     
