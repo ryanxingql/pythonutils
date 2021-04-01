@@ -431,7 +431,14 @@ class BaseAlg():
         for sched_item in self.sched_lst:
             self.sched_lst[sched_item].step()
 
-    def update_params(self, data, iter, flag_step, inter_step, additional=None):
+    def update_params(
+            self,
+            data,
+            iter,
+            flag_step,
+            inter_step,
+            additional=None
+        ):
         self.net_loss = 0.  # for recorder
         self.net_lr = None
         self.gen_im_lst = dict()
