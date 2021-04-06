@@ -60,6 +60,7 @@ class PSNR(torch.nn.Module):
     def __init__(self):
         super().__init__()
         self.mse_func = nn.MSELoss()
+        self.if_lower = False
 
     def forward(self, x, y):
         mse = self.mse_func(x, y)
@@ -82,6 +83,8 @@ class LPIPS(torch.nn.Module):
         self.lpips_fn = lpips.LPIPS(net=net, spatial=if_spatial)
         if if_cuda:
             self.lpips_fn.cuda()
+
+        self.if_lower = True
 
     def _preprocess(self, inp, mode):
         if mode == 'im':

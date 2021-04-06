@@ -351,12 +351,13 @@ class BaseAlg():
                         msg += f'> {crit_name}: [{ave_perfm:.3e}] {crit_unit}\n'
                     elif mod == 'baseline':
                         msg += f'> baseline {crit_name}: [{ave_perfm:.3e}] {crit_unit}\n'
-                    
+
                     if crit_if_focus:
                         report_perfrm = ave_perfm
+                        if_lower = crit_fn.if_lower
                 
                 if if_train:  # validation
-                    return report_perfrm, msg.rstrip(), write_dict_lst
+                    return if_lower, report_perfrm, msg.rstrip(), write_dict_lst
                 else:  # test
                     return msg.rstrip(), timer.get_ave_inter()
         
