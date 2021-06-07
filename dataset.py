@@ -154,15 +154,7 @@ class DistSampler(Sampler):
         return self.num_samples  # for one rank
 
 
-def create_dataloader(
-        if_train,
-        dataset,
-        num_worker=None,
-        batch_size=None,
-        sampler=None,
-        rank=None,
-        seed=None,
-):
+def create_dataloader(if_train, dataset, num_worker=None, batch_size=None, sampler=None, rank=None, seed=None):
     """Create dataloader.
     
     Dataloader is created for each rank.
