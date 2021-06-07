@@ -2,7 +2,7 @@
 
 Utilities based on PYTHON 3, TORCH and OPENCV.
 
-Current version: [v2.0.0] [[v1.0.0]](https://github.com/RyanXingQL/PythonUtils/tree/2d339029cd97f2a4acba288869bcc13f7daaf7de)
+Current version: [v2] [[v1]](https://github.com/RyanXingQL/PythonUtils/tree/2d339029cd97f2a4acba288869bcc13f7daaf7de)
 
 :e-mail: Feel free to contact: `ryanxingql@gmail.com`.
 
