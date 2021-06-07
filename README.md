@@ -1,24 +1,23 @@
 # Python Utils
 
-Python is all we need!
+Utilities based on PYTHON 3, TORCH and OPENCV.
 
-Feel free to contact: <ryanxingql@gmail.com>.
+Feel free to contact: `ryanxingql@gmail.com`.
 
 ## Content
 
-- **algorithm**: basic template for deep learning algorithms.
+- **algorithm**: a basis class of deep-learning algorithms.
 - **conversion**: common-used tools for format/color space conversion, e.g., YCbCr <-> RGB conversion.
 - **dataset**: basic datasets and common-used functions, e.g., LMDB dataset.
 - **deep learning**: common-used tools for deep learning, e.g., multi-processing.
 - **metrics**: common-used metrics, e.g., PSNR.
-- **network**: basic template for deep learning networks.
+- **network**: a basis class of deep-learning networks.
 - **system**: common-used tools for system manipulation, e.g., return formatted time data.
 
 ## Principle
 
-- Image default format: (H W C) uint8 numpy array.
-- In default, input is first copied then processed. Note that `np.copy` is a shallow copy and will not copy object elements within arrays. See [ref](https://numpy.org/doc/stable/reference/generated/numpy.copy.html).
-- In default, input image is first converted to `np.float64`, then converted back after processing.
+- In default, an image is a NUMPY array with the size being `(H W C)` and the data type being `np.uint8`.
+- In default, an image input is first copied then processed; a tensor input is `[.cpu()].detach().clone()` then processed.
 
 ## License
 
@@ -33,3 +32,7 @@ If you find this repository helpful, you may cite:
   note = "[Online; accessed 11-April-2021]"
 }
 ```
+
+If you want to learn more about this repository, check [here](https://github.com/RyanXingQL/PythonUtils/wiki/Learn-More).
+
+[[v1.0.0]](https://github.com/RyanXingQL/PythonUtils/tree/2d339029cd97f2a4acba288869bcc13f7daaf7de)

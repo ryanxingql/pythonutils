@@ -1,31 +1,41 @@
+from collections import OrderedDict
+
 import torch
 import torch.nn as nn
 import torch.distributed as dist
 import torch.multiprocessing as tmp
-from collections import OrderedDict
 from torchvision.models import vgg as vgg
 
-# ===
+
 # Multi-processing
-# ===
 
 def init_dist(local_rank=0, backend='nccl'):
     tmp.set_start_method('spawn', force=True)
     torch.cuda.set_device(local_rank)
     dist.init_process_group(backend=backend)
 
-# ===
-# Loss
-# ===
 
-loss_lst = ['CharbonnierLoss', 'GANLoss', 'RelativisticGANLoss', 'VGGLoss', 'MSELoss']
+# Loss functions
+
+loss_lst = ['CharbonnierLoss', 'CrossEntropyLoss', 'GANLoss', 'RelativisticGANLoss', 'VGGLoss', 'MSELoss']
+
 
 def return_loss_func(name, opts):
-    assert (name in loss_lst), '> Unsupported loss fn!'
+    assert (name in loss_lst), 'NOT SUPPORTED YET!'
     loss_func_cls = globals()[name]
     return loss_func_cls(**opts)
 
-class MSELoss(torch.nn.Module):
+
+class CrossEntropyLoss(nn.Module):
+    def __init__(self, reduction='mean'):
+        super().__init__()
+        self.loss = nn.CrossEntropyLoss(reduction=reduction)
+
+    def forward(self, inp, tar):
+        return self.loss(inp, tar)
+
+
+class MSELoss(nn.Module):
     def __init__(self, reduction='mean'):
         super().__init__()
         self.loss = nn.MSELoss(reduction=reduction)
@@ -33,13 +43,14 @@ class MSELoss(torch.nn.Module):
     def forward(self, inp, ref):
         return self.loss(inp, ref)
 
-class CharbonnierLoss(torch.nn.Module):
+
+class CharbonnierLoss(nn.Module):
     def __init__(self, eps=1e-6):
         super().__init__()
         self.eps = eps
 
     def forward(self, inp, ref):
-        assert len(inp.shape) <= 4, '> Unsupported input!'
+        assert len(inp.shape) <= 4, 'NOT SUPPORTED INPUT SHAPE!'
         if len(inp.shape) < 3:
             inp = inp.unsqueeze(0)
         n = inp.shape[0]
@@ -48,12 +59,9 @@ class CharbonnierLoss(torch.nn.Module):
         loss = torch.mean(torch.stack([torch.mean(error[k]) for k in range(n)]))
         return loss
 
+
 class GANLoss(nn.Module):
-    def __init__(
-            self,
-            real_label_val=1.0,
-            fake_label_val=0.0,
-        ):
+    def __init__(self, real_label_val=1.0, fake_label_val=0.0):
         """
         Args:
             real_label_val (float): The value for real label. Default: 1.0.
@@ -71,19 +79,14 @@ class GANLoss(nn.Module):
             input_t: a list of scores from GANs discriminator.
             if_real (True|False): if the sample is real (gt, not enhanced sample).
         """
-        target_val = (
-            self.real_label_val if if_real else self.fake_label_val
-        )
+        target_val = (self.real_label_val if if_real else self.fake_label_val)
         target_label = input_t.new_ones(input_t.size()) * target_val
         loss = self.loss(input_t, target_label)
         return loss
 
+
 class RelativisticGANLoss(nn.Module):
-    def __init__(
-            self,
-            real_label_val=1.,
-            fake_label_val=0.,
-        ):
+    def __init__(self, real_label_val=1., fake_label_val=0.):
         """
         gan_loss_func(x - y, target)
         if x is more real than y, then two d out distance aims to be 1. for dis.
@@ -97,8 +100,9 @@ class RelativisticGANLoss(nn.Module):
 
         self.gan_loss = GANLoss(real_label_val, fake_label_val)
 
-    def forward(self, dis, data_real, data_fake, inter_step, mode='gen'):
+    def forward(self, dis, ref, inp, weight=1., mode='gen'):
         """
+        mode: (gen|dis)
         For gen loss:
             gt -> dis -> real_pred (can detach)
             lq -> gen -> enhanced -> dis -> fake_pred
@@ -106,36 +110,43 @@ class RelativisticGANLoss(nn.Module):
             gt -> dis -> real_pred
             lq -> gen -> enhanced (can detach) -> dis -> fake_pred
 
-        Args:
-            mode (gen|dis)
-
-        If we use VGG discriminator which includes inplace BN operation, we should make sure that we use dis only once before backward.
+        If we use VGG discriminator which includes inplace BN operation, we should make sure that we use dis only once
+        before backward.
         """
-        assert mode in ['gen', 'dis'], '> Unsupported mode!'
+        assert mode in ['gen', 'dis'], 'NOT SUPPORTED MODE!'
         if mode == 'gen':
-            real_pred = dis(data_real).detach()  # unrelated to dis
-            fake_pred = dis(data_fake)  # use dis here; only once
+            real_pred = dis(ref).detach()  # unrelated to dis
+            fake_pred = dis(inp)  # use dis here; only once
             loss_real = self.gan_loss(real_pred - torch.mean(fake_pred), False)
             loss_fake = self.gan_loss(fake_pred - torch.mean(real_pred), True)
-            loss = loss_real * 0.5 + loss_fake * 0.5
-            loss /= float(inter_step)  # multiple backwards and step once, thus mean
-            return loss
+            loss = (loss_real * 0.5 + loss_fake * 0.5) * weight
+            loss.backward(retain_graph=True)
+
+            loss_real_item = loss_real.item()
+            loss_fake_item = loss_fake.item()
+            loss_tot_item = (loss_real_item + loss_fake_item) / 2.
+            return loss_tot_item, loss_real_item, loss_fake_item
             
         elif mode == 'dis':
             # fake_pred must be in front of real_pred, so that dis is only used once
-            fake_pred_d = dis(data_fake.detach()).detach()
-            real_pred = dis(data_real)  # use dis here
-            loss_real = self.gan_loss(real_pred - torch.mean(fake_pred_d), True) * 0.5
-            loss_real /= float(inter_step)  # multiple backwards and step once, thus mean
-            loss_real.backward()
+            fake_pred_d = dis(inp.detach()).detach()
+            real_pred = dis(ref)  # use dis here
+            loss_real = self.gan_loss(real_pred - torch.mean(fake_pred_d), True)
+            loss_real_item = loss_real.item()
+            loss_real *= 0.5 * weight
+            loss_real.backward(retain_graph=True)
 
-            fake_pred = dis(data_fake.detach())  # use dis here; 
+            fake_pred = dis(inp.detach())  # use dis here;
             real_pred_d = real_pred.detach()
-            loss_fake = self.gan_loss(fake_pred - torch.mean(real_pred_d), False) * 0.5  # for loss_fake, detach as constant
-            loss_fake /= float(inter_step)  # multiple backwards and step once, thus mean
-            loss_fake.backward()
-        
-            return loss_real.item(), loss_fake.item()
+            loss_fake = self.gan_loss(fake_pred - torch.mean(real_pred_d), False)
+            # for loss_fake, detach as constant
+            loss_fake_item = loss_fake.item()
+            loss_fake *= 0.5 * weight
+            loss_fake.backward(retain_graph=True)
+
+            loss_tot_item = (loss_real_item + loss_fake_item) / 2.
+            return loss_tot_item, loss_real_item, loss_fake_item
+
 
 class _VGGFeatureExtractor(nn.Module):
     """VGG network for feature extraction.
@@ -163,10 +174,10 @@ class _VGGFeatureExtractor(nn.Module):
             requires_grad=False,
             remove_pooling=False,
             pooling_stride=2
-        ):
+    ):
         super().__init__()
 
-        NAMES = {
+        names = {
             'vgg11': [
                 'conv1_1', 'relu1_1', 'pool1', 'conv2_1', 'relu2_1', 'pool2',
                 'conv3_1', 'relu3_1', 'conv3_2', 'relu3_2', 'pool3', 'conv4_1',
@@ -199,7 +210,7 @@ class _VGGFeatureExtractor(nn.Module):
         self.layer_name_list = layer_name_list
         self.use_input_norm = use_input_norm
 
-        self.names = NAMES[vgg_type]
+        self.names = names[vgg_type]
         if 'bn' in vgg_type:
             self.names = self.insert_bn(self.names)
 
@@ -209,7 +220,7 @@ class _VGGFeatureExtractor(nn.Module):
             idx = self.names.index(v)
             if idx > max_idx:
                 max_idx = idx
-        vgg_net = getattr(vgg, vgg_type)(pretrained=True) # get pre-trained vgg19
+        vgg_net = getattr(vgg, vgg_type)(pretrained=True)  # get pre-trained vgg19
         features = vgg_net.features[:max_idx + 1]
 
         modified_net = OrderedDict()
@@ -272,7 +283,8 @@ class _VGGFeatureExtractor(nn.Module):
             if key in self.layer_name_list:
                 output[key] = x.clone()
         return output
-    
+
+
 class VGGLoss(nn.Module):
     """Perceptual loss with commonly used style loss.
     Args:
@@ -295,12 +307,15 @@ class VGGLoss(nn.Module):
     def __init__(
             self,
             vgg_type='vgg19',
-            layer_weights={'conv5_4': 1.0},
+            layer_weights=None,
             use_input_norm=True,
             perceptual_weight=1.,
             style_weight=0.,
-        ):
+    ):
         super().__init__()
+
+        if layer_weights is None:
+            layer_weights = {'conv5_4': 1.0}
         self.perceptual_weight = perceptual_weight
         self.style_weight = style_weight
         
@@ -362,22 +377,22 @@ class VGGLoss(nn.Module):
 
         return percep_loss + style_loss
 
-# ===
+
 # Optimizer
-# ===
 
 optim_lst = ['Adam']
 
+
 def return_optimizer(name, params, opts):
-    assert (name in optim_lst), '> Unsupported optimizer!'
+    assert (name in optim_lst), 'NOT SUPPORTED YET!'
     if name == 'Adam':
         return torch.optim.Adam(params, **opts)
 
-# ===
+
 # Scheduler
-# ===
 
 scheduler_lst = ['CosineAnnealingLR', 'CosineAnnealingWarmRestarts', 'MultiStepLR']
+
 
 def return_scheduler(name, optim, opts):
     """
@@ -409,7 +424,7 @@ def return_scheduler(name, optim, opts):
             gamma=0.1
             last_epoch=-1
     """
-    assert (name in scheduler_lst), '> Unsupported scheduler!'
+    assert (name in scheduler_lst), 'NOT SUPPORTED YET!'
     if name == 'CosineAnnealingWarmRestarts':
         return torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optim, **opts)
     elif name == 'CosineAnnealingLR':

@@ -1,9 +1,22 @@
+import copy
+
 import numpy as np
 from cv2 import cv2
 
-# ###
-# image <-> numpy array / tensor
-# ###
+
+def _float2uint8(im, if_time=True):
+    im = copy.deepcopy(im)
+    im = im.astype(np.float64)
+
+    im = im * 255. if if_time else im
+    im = im.round()  # first round. directly .astype will cut decimals
+    im = im.clip(0, 255)  # else, -1 -> 255, -2 -> 254!
+    im = im.astype(np.uint8)
+    return im
+
+
+# Image <-> numpy array <- tensor
+# im -> tensor is usually conducted in dataset codes, and thus is omitted.
 
 def imread(im_path):
     """Read image into numpy array.
@@ -11,40 +24,29 @@ def imread(im_path):
     Return: (H W C) uint8 numpy array.
     """
     im = cv2.imread(im_path)
-
     im = im.astype(np.uint8)
     return im
+
 
 def tensor2im(t):
     """Tensor -> im.
     
-    Input: ([RGB] H W) torch.float tensor.
-    Return: (H W [BGR]) np.uint8 array for cv2.imwrite.
+    Input:
+        ([RGB] H W) torch.float tensor.
+    Return:
+        (H  W [BGR]) np.uint8 array for cv2.imwrite.
 
-    Note: RGB is default, since if_bgr2rgb of func:_totensor in dataset.py is True in default. 
+    Note: RGB is in default, since if_bgr2rgb of func: _totensor in dataset.py is True in default.
     """
-    t = t.cpu().detach()  # as copy in numpy
+    t = t.cpu().detach().clone()
 
     im = t.numpy()[::-1, :, :]
     im = im.transpose(1, 2, 0)
-
-    def _float2uint8(im):
-        im *= 255.
-        im = im.round()  # first round. directly astype will cut decimals
-        im = im.clip(0, 255)  # else, -1 -> 255, -2 -> 254!
-        im = im.astype(np.uint8)
-        return im
-    
     im = _float2uint8(im)
     return im
 
-"""
-im2tensor is usually conducted in dataset codes, and thus is omitted.
-"""
 
-# ###
-# channel shuffling
-# ###
+# Channel shuffling
 
 def rgb2bgr(im):
     """RGB -> BGR.
@@ -52,9 +54,13 @@ def rgb2bgr(im):
     Input/Return: (..., C).
     """
     nc = im.shape[-1]
-    assert (nc == 1 or nc == 3), 'Input format: (..., C)!'
+    assert (nc == 1 or nc == 3), 'EXPECTED INPUT FORMAT: (..., C)!'
+
+    im = copy.deepcopy(im)
+
     im = im[..., ::-1]
     return im
+
 
 def bgr2rgb(im):
     """BGR -> RGB.
@@ -62,9 +68,13 @@ def bgr2rgb(im):
     Input/Return: (..., C).
     """
     nc = im.shape[-1]
-    assert (nc == 1 or nc == 3), 'Input format: (..., C)!'
+    assert (nc == 1 or nc == 3), 'EXPECTED INPUT FORMAT: (..., C)!'
+
+    im = copy.deepcopy(im)
+
     im = im[..., ::-1]
     return im
+
 
 """OpenCV
 def bgr2rgb(im):
@@ -78,18 +88,19 @@ def rgb2bgr(im):
     return im
 """
 
-# ###
-# color space conversion
-# ###
 
-mat1 = np.array([
-    [  65.481,  128.553,   24.966],
-    [ -37.797,  -74.203,  112.   ],
-    [ 112.   ,  -93.786,  -18.214],
+# Color space conversion
+
+mat1 = np.array(
+    [
+        [65.481,  128.553,   24.966],
+        [-37.797,  -74.203,  112.],
+        [112.,  -93.786,  -18.214],
     ]
 ) / 225.
 
 mat2 = np.linalg.inv(mat1)
+
 
 def rgb2ycbcr(im):
     """RGB -> YCbCr.
@@ -99,27 +110,23 @@ def rgb2ycbcr(im):
     Y is in the range [16,235]. Yb and Cr are in the range [16,240].
     See: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion.
     """
-    im = im.copy()
+    im = copy.deepcopy(im)
     im = im.astype(np.float64)
     
     im = im.dot(mat1.T)
-    im[:,:,0] += 16.
-    im[:,:,[1,2]] += 128.
-    
-    def _uint8(im):
-        im = im.round()  # first round. directly astype will cut decimals
-        im = im.clip(0, 255)  # else, -1 -> 255, -2 -> 254!
-        im = im.astype(np.uint8)
-        return im
-    im = _uint8(im)
+    im[:, :, 0] += 16.
+    im[:, :, [1, 2]] += 128.
+
+    im = _float2uint8(im, if_time=False)
     return im
+
 
 def bgr2ycbcr(im):
     """BGR -> YCbCr.
     
     Input: (H W C) uint8 image.
     """
-    im = im.copy()
+    im = copy.deepcopy(im)
     im = im.astype(np.float64)
     
     im = bgr2rgb(im)
@@ -127,6 +134,7 @@ def bgr2ycbcr(im):
 
     im = im.astype(np.uint8)
     return im
+
 
 def ycbcr2rgb(im):
     """YCbCr -> RGB. 444P.
@@ -136,35 +144,23 @@ def ycbcr2rgb(im):
     Y is in the range [16,235]. Yb and Cr are in the range [16,240].
     See: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion.
     """
-    im = im.copy()
+    im = copy.deepcopy(im)
     im = im.astype(np.float64)
     
-    im[:,:,0] -= 16.
-    im[:,:,[1,2]] -= 128.
-
-    """
-    mat = np.array([
-        [255./219., 0., 255./224.],
-        [255./219., -255./224.*1.772*0.114/0.587, -255./224.*1.402*0.299/0.587],
-        [255./219., 255./224.*1.772, 0.],
-        ])  # actually the inverse matrix of (that in rgb2ycbcr / 255.)
-    """
+    im[:, :, 0] -= 16.
+    im[:, :, [1, 2]] -= 128.
     im = im.dot(mat2.T)  # error when using mat2 is smaller
-    
-    def _uint8(im):
-        im = im.round()  # first round. directly astype will cut decimals
-        im = im.clip(0, 255)  # else, -1 -> 255, -2 -> 254!
-        im = im.astype(np.uint8)
-        return im
-    im = _uint8(im)
+
+    im = _float2uint8(im, if_time=False)
     return im
+
 
 def ycbcr2bgr(im):
     """YCbCr -> BGR.
     
     Input: (H W C) uint8 image.
     """
-    im = im.copy()
+    im = copy.deepcopy(im)
     im = im.astype(np.float64)
 
     im = ycbcr2rgb(im)
@@ -173,6 +169,7 @@ def ycbcr2bgr(im):
     im = im.astype(np.uint8)
     return im
 
+
 def yuv420p2444p(y, u, v):
     """YUV 420P -> 444P.
     
@@ -180,8 +177,9 @@ def yuv420p2444p(y, u, v):
 
     Input: (H W 1) uint8 numpy array.
     """
-    y, u, v = y.copy(), u.copy(), v.copy()
-    assert y.shape[-1] == 1, 'Input (H W 1)!'
+    assert y.shape[-1] == 1, 'EXPECTED INPUT FORMAT: (H W 1)!'
+
+    y, u, v = copy.deepcopy(y), copy.deepcopy(u), copy.deepcopy(v)
 
     u_up = np.zeros(y.shape, dtype=np.uint8)
     v_up = np.zeros(y.shape, dtype=np.uint8)
@@ -191,27 +189,26 @@ def yuv420p2444p(y, u, v):
         for iw in range(uw):
             w_left = iw * 2
 
-            u_value = u[ih,iw,0]
-            v_value = v[ih,iw,0]
+            u_value = u[ih, iw, 0]
+            v_value = v[ih, iw, 0]
 
-            u_up[h_top,w_left,0] = u_value
-            u_up[h_top+1,w_left,0] = u_value
-            u_up[h_top,w_left+1,0] = u_value
-            u_up[h_top+1,w_left+1,0] = u_value
+            u_up[h_top, w_left, 0] = u_value
+            u_up[h_top+1, w_left, 0] = u_value
+            u_up[h_top, w_left+1, 0] = u_value
+            u_up[h_top+1, w_left+1, 0] = u_value
             
-            v_up[h_top,w_left,0] = v_value
-            v_up[h_top+1,w_left,0] = v_value
-            v_up[h_top,w_left+1,0] = v_value
-            v_up[h_top+1,w_left+1,0] = v_value
-    yuv444p_im = np.concatenate((y, u_up ,v_up), axis=2)
+            v_up[h_top, w_left, 0] = v_value
+            v_up[h_top+1, w_left, 0] = v_value
+            v_up[h_top, w_left+1, 0] = v_value
+            v_up[h_top+1, w_left+1, 0] = v_value
+    yuv444p_im = np.concatenate((y, u_up, v_up), axis=2)
     
     return yuv444p_im
 
-yuv_type_list = ['420p', '444p']
 
 def import_yuv(
         seq_path, h, w, tot_frm, yuv_type='420p', start_frm=0, only_y=True
-    ):
+):
     """Load Y, U, and V channels separately from a 8bit yuv420p video.
     
     Args:
@@ -230,7 +227,11 @@ def import_yuv(
         参见: https://en.wikipedia.org/wiki/YUV
     """
     # setup params
-    assert yuv_type in yuv_type_list, 'Not supported!'
+    yuv_type_list = ['420p', '444p']
+    assert yuv_type in yuv_type_list, 'NOT SUPPORTED YET!'
+
+    hh = None
+    ww = None
     if yuv_type == '420p':
         hh, ww = h // 2, w // 2
     elif yuv_type == '444p':
@@ -241,6 +242,8 @@ def import_yuv(
     
     # init
     y_seq = np.zeros((tot_frm, h, w), dtype=np.uint8)
+    u_seq = None
+    v_seq = None
     if not only_y:
         u_seq = np.zeros((tot_frm, hh, ww), dtype=np.uint8)
         v_seq = np.zeros((tot_frm, hh, ww), dtype=np.uint8)
@@ -262,9 +265,8 @@ def import_yuv(
     else:
         return y_seq, u_seq, v_seq
 
-# ===
+
 # Others
-# ===
 
 def dict2str(input_dict, indent=0):
     """Dict to string for printing options."""

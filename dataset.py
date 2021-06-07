@@ -1,15 +1,17 @@
 import math
 import random
+from pathlib import Path
+from functools import partial
+
 import torch
 import numpy as np
 from cv2 import cv2
-from pathlib import Path
-from functools import partial
 from torch.utils.data import Dataset
 from torch.utils.data.sampler import Sampler
 from torch.utils.data import DataLoader
 
 from .conversion import bgr2rgb
+
 
 def _paired_random_crop(img_gts, img_lqs, h_patch, w_patch, if_center=False):
     """Apply the same cropping to GT and LQ image pairs.
@@ -26,7 +28,7 @@ def _paired_random_crop(img_gts, img_lqs, h_patch, w_patch, if_center=False):
     h_lq, w_lq, _ = img_lqs[0].shape
     h_gt, w_gt, _ = img_gts[0].shape
 
-    assert (h_gt >= h_patch) and (w_gt >= w_patch), '> Target patch is larger than the input image!'
+    assert (h_gt >= h_patch) and (w_gt >= w_patch), 'TARGET PATCH SIZE IS LARGER THAN THE IMAGE SIZE!'
 
     if if_center:
         top_idx = (h_lq - h_patch) // 2
@@ -49,6 +51,7 @@ def _paired_random_crop(img_gts, img_lqs, h_patch, w_patch, if_center=False):
     if len(img_lqs) == 1:
         img_lqs = img_lqs[0]
     return img_gts, img_lqs
+
 
 def _augment(img_lst, if_flip=True, if_rot=True):
     """Apply the same flipping and (or) rotation to all the imgs.
@@ -78,6 +81,7 @@ def _augment(img_lst, if_flip=True, if_rot=True):
         img_lst = img_lst[0]
     return img_lst
 
+
 def _totensor(img_lst, if_bgr2rgb=True, if_float32=True):
     """(H W [BGR]) uint8 ndarray -> ([RGB] H W) float32 tensor
     
@@ -95,6 +99,7 @@ def _totensor(img_lst, if_bgr2rgb=True, if_float32=True):
         return [_main(img) for img in img_lst]
     else:
         return _main(img_lst)
+
 
 class DistSampler(Sampler):
     """Distributed sampler that loads data from a subset of the dataset.
@@ -117,9 +122,9 @@ class DistSampler(Sampler):
         rank (int | None): Rank of the current process within num_replicas.
         ratio (int): Enlarging ratio.
     """
-    def __init__(
-            self, ds_size, num_replicas=None, rank=None, ratio=1
-        ):
+    def __init__(self, ds_size, num_replicas=None, rank=None, ratio=1):
+        # do not & need not super the init of Sampler
+
         self.ds_size = ds_size
         self.num_replicas = num_replicas
         self.rank = rank
@@ -148,6 +153,7 @@ class DistSampler(Sampler):
     def __len__(self):
         return self.num_samples  # for one rank
 
+
 def create_dataloader(
         if_train,
         dataset,
@@ -156,7 +162,7 @@ def create_dataloader(
         sampler=None,
         rank=None,
         seed=None,
-    ):
+):
     """Create dataloader.
     
     Dataloader is created for each rank.
@@ -190,6 +196,7 @@ def create_dataloader(
         )
     return DataLoader(**dataloader_args)
 
+
 def _worker_init_fn(worker_id, num_workers, rank, seed):
     """For reproducibility, fix seed of each worker.
     
@@ -210,8 +217,9 @@ def _worker_init_fn(worker_id, num_workers, rank, seed):
     np.random.seed(worker_seed)
     random.seed(worker_seed)
 
-class CPUPrefetcher():
-    """CPU prefetcher."""
+
+class CPUPrefetcher:
+    """CPU pre-fetcher."""
     def __init__(self, loader):
         self.ori_loader = loader
         self.loader = iter(loader)
@@ -225,16 +233,17 @@ class CPUPrefetcher():
     def reset(self):
         self.loader = iter(self.ori_loader)
 
-class CUDAPrefetcher():
-    """CUDA prefetcher.
+
+"""
+class CUDAPrefetcher:
+    '''CUDA pre-fetcher.
 
     Ref: https://github.com/NVIDIA/apex/issues/304#
-    It may consums more GPU memory.
+    It may consume more GPU memory.
     
     Args:
         loader: Dataloader.
-        opt (dict): Options.
-    """
+    '''
     def __init__(self, loader):
         self.ori_loader = loader
         self.loader = iter(loader)
@@ -262,6 +271,8 @@ class CUDAPrefetcher():
     def reset(self):
         self.loader = iter(self.ori_loader)
         self.preload()
+"""
+
 
 class DiskIODataset(Dataset):
     """Dataset using disk IO.
@@ -271,11 +282,12 @@ class DiskIODataset(Dataset):
     max_num: clip the dataset.
     if_train: if True, crop the images.
     """
-    def __init__(self, gt_path, lq_path, if_train, max_num=-1, start_idx=0, aug=None, test_crop=None):
+    def __init__(self, gt_path, lq_path, if_train, max_num=-1, start_idx=0, aug=None, center_crop=None, padding=None):
         super().__init__()
 
         self.opts_aug = aug['opts'] if (aug is not None) else None
-        self.opts_test_crop = test_crop if ((test_crop is not None) and (test_crop['if_crop'] == True)) else None
+        self.opts_center_crop = center_crop['opts'] if ((center_crop is not None) and center_crop['if_crop']) else None
+        self.opts_padding = padding['opts'] if ((padding is not None) and padding['if_pad']) else None
 
         # dataset path
         self.gt_path = Path(gt_path) if gt_path is not None else None
@@ -319,24 +331,37 @@ class DiskIODataset(Dataset):
         # augmentation for training data
         # suppose that img_gt is not None
         if self.if_train:
-            assert img_gt is not None, '> supervised training!'
+            assert img_gt is not None, 'NO SUPERVISION!'
             img_gt, img_lq = _paired_random_crop(
                 img_gt, img_lq, self.opts_aug['gt_h'], self.opts_aug['gt_w'], if_center=False,
             )
-            img_lst = [img_lq, img_gt] # gt is augmented jointly with lq
+            img_lst = [img_lq, img_gt]  # gt is augmented jointly with lq
             img_lst = _augment(
                 img_lst, self.opts_aug['if_flip'], self.opts_aug['if_rot'],
             )  # randomly crop
             img_lq, img_gt = img_lst[:]
-        elif self.opts_test_crop is not None:
-            if gt_path is not None:
-                img_gt, img_lq = _paired_random_crop(
-                    img_gt, img_lq, self.opts_test_crop['h'], self.opts_test_crop['w'], if_center=True,
-                )
-            else:
-                img_gt, img_lq = _paired_random_crop(
-                    img_lq, img_lq, self.opts_test_crop['h'], self.opts_test_crop['w'], if_center=True,
-                )
+
+        else:
+            if self.opts_center_crop is not None:
+                h, w, _ = img_gt.shape
+                if h > self.opts_center_crop['h'] and w > self.opts_center_crop['w']:
+                    if gt_path is not None:
+                        img_gt, img_lq = _paired_random_crop(
+                            img_gt, img_lq, self.opts_center_crop['h'], self.opts_center_crop['w'], if_center=True,
+                        )
+                    else:
+                        img_gt, img_lq = _paired_random_crop(
+                            img_lq, img_lq, self.opts_center_crop['h'], self.opts_center_crop['w'], if_center=True,
+                        )
+
+            if self.opts_padding is not None:
+                h, w, _ = img_gt.shape
+                h_ = int(np.ceil(h / self.opts_padding['mul']) * self.opts_padding['mul'])
+                w_ = int(np.ceil(w / self.opts_padding['mul']) * self.opts_padding['mul'])
+                dh = h_ - h if h_ > h else 0
+                dw = w_ - w if w_ > w else 0
+                # img_gt = np.pad(img_gt, ((h_ // 2, h - h_ // 2), (w_ // 2, w - w_ // 2)), mode='symmetric')
+                img_lq = np.pad(img_lq, ((dh // 2, dh - dh // 2), (dw // 2, dw - dw // 2), (0, 0)), mode='symmetric')
 
         # ndarray to tensor
         img_lst = [img_lq, img_gt] if img_gt is not None else [img_lq]
@@ -346,12 +371,13 @@ class DiskIODataset(Dataset):
         return dict(
             lq=img_lst[0],
             gt=gt,
-            name=self.data_info['name'][idx], # dataloader will return it as a list (len is batch size)
-            idx=self.data_info['idx'][idx], # dataloader will return it as list-like tensor instead of numpy array (len is batch size)
+            name=self.data_info['name'][idx],  # dataloader will return it as a list (len is batch size)
+            idx=self.data_info['idx'][idx],  # dataloader will return it as list-like tensor instead of numpy array
         )
 
     def __len__(self):
         return self.im_num
+
 
 """unfinished
 class LMDBIODataset(Dataset):
