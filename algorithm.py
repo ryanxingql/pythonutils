@@ -25,7 +25,6 @@ class BaseAlg:
         # Create model
 
         self.model = model_cls(opts_dict=opts_dict['network'], if_train=self.if_train)
-        self.model_cuda_ddp()
 
         # Create loss functions, optimizers and schedulers
 
@@ -83,6 +82,10 @@ class BaseAlg:
             self.done_niter, _ = self.load_state(ckp_load_path=ckp_load_path, if_load_net=if_load_net,
                                                  if_load_optim=if_load_optim, if_load_sched=if_load_sched,
                                                  if_dist=self.if_dist)
+
+        # move model to GPU
+        # load ckp on cpu first, then move to gpu for saving memory: https://pytorch.org/docs/stable/generated/torch.load.html#torch.load
+        self.model_cuda_ddp()
 
     def accum_gradient(self, module, stage, group, data, inter_step, **_):
         data_lq = data['lq'].cuda(non_blocking=True)
@@ -181,12 +184,22 @@ class BaseAlg:
                 self.sched_lst[stage][group] = sched_
 
     def load_state(self, ckp_load_path, if_load_net=True, if_load_optim=False, if_load_sched=False, if_dist=True):
-        states = torch.load(ckp_load_path)
+        states = torch.load(ckp_load_path, map_location='cpu')  # load on cpu to save memory. https://pytorch.org/docs/stable/generated/torch.load.html#torch.load
 
         if if_load_net:  # load network
             for subnet in self.model.net:
                 state_dict = states['network'][subnet]
 
+                if 'module.' in list(state_dict.keys())[0]:
+                    new_state_dict = OrderedDict()
+                    for k, v in state_dict.items():
+                        name = k[7:]  # remove module
+                        new_state_dict[name] = v
+
+                else:
+                    new_state_dict = state_dict
+
+                """
                 if ('module.' in list(state_dict.keys())[0]) and \
                         (not if_dist):  # multi-gpu pre-trained -> single-gpu training
                     new_state_dict = OrderedDict()
@@ -203,6 +216,7 @@ class BaseAlg:
 
                 else:  # the same way of training
                     new_state_dict = state_dict
+                """
 
                 self.model.net[subnet].load_state_dict(new_state_dict)
 
@@ -212,14 +226,30 @@ class BaseAlg:
                     state_dict = states['optim'][stage][group]
                     self.optim_lst[stage][group].load_state_dict(state_dict)
 
+                    for state in self.optim_lst[stage][group].state.values():  # although model is loaded on cpu, the optim and sched should be loaded on gpu
+                        for k, v in state.items():
+                            if torch.is_tensor(v):
+                                state[k] = v.cuda()
+
         if if_load_sched:
             for stage in self.training_stage_lst:
                 for group in self.sched_lst[stage]:
                     state_dict = states['sched'][stage][group]
                     self.sched_lst[stage][group].load_state_dict(state_dict)
 
+                    for state in self.sched_lst[stage][group].state.values():
+                        for k, v in state.items():
+                            if torch.is_tensor(v):
+                                state[k] = v.cuda()
+
+        idx_iter = states['idx_iter']
+        best_val_perfrm = states['best_val_perfrm']
+
+        del states
+        torch.cuda.empty_cache()
+
         print(f'ckp [{ckp_load_path}] loaded.')
-        return states['idx_iter'], states['best_val_perfrm']
+        return idx_iter, best_val_perfrm
 
     def model_cuda_ddp(self):
         """Move to GPU; DDP if needed."""
