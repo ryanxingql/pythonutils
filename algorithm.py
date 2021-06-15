@@ -53,16 +53,22 @@ class BaseAlg:
         # Load checkpoint
 
         if self.if_train:
-            if not self.opts_dict['train']['load_state']['if_load']:  # no loading; train from scratch
+            _if_load = False
+
+            if self.opts_dict['train']['load_state']['if_load']:
+                ckp_load_path = self.opts_dict['train']['load_state']['opts']['ckp_load_path']
+                if ckp_load_path is None:
+                    ckp_load_path = Path('exp') / self.opts_dict['exp_name'] / 'ckp_last.pt'
+
+                if ckp_load_path.exists():
+                    _if_load = True
+
+            if not _if_load:  # no loading; train from scratch
                 self.done_niter = 0
                 self.best_val_perfrm = None
 
             else:  # load ckp
-                ckp_load_path = self.opts_dict['train']['load_state']['opts']['ckp_load_path'] \
-                    if self.opts_dict['train']['load_state']['opts']['ckp_load_path'] is not None \
-                    else Path('exp') / self.opts_dict['exp_name'] / 'ckp_last.pt'
                 if_load_net = True
-
                 if_load_optim_ = self.opts_dict['train']['load_state']['opts']['if_load_optim']
                 if_load_optim = True if if_load_optim_ else False
                 if_load_sched = True if self.if_sched and if_load_optim_ else False
@@ -73,9 +79,10 @@ class BaseAlg:
                                                                         if_dist=self.if_dist)
 
         else:  # test
-            ckp_load_path = self.opts_dict['test']['ckp_load_path'] if self.opts_dict['test']['ckp_load_path'] is not \
-                                                                       None else Path('exp') / self.opts_dict[
-                'exp_name'] / 'ckp_first_best.pt'
+            ckp_load_path = self.opts_dict['test']['ckp_load_path']
+            if ckp_load_path is None:
+                ckp_load_path = Path('exp') / self.opts_dict['exp_name'] / 'ckp_first_best.pt'
+
             if_load_net = True
             if_load_optim = False
             if_load_sched = False
