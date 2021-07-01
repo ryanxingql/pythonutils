@@ -39,7 +39,7 @@ class MSELoss(nn.Module):
     def __init__(self, reduction='mean'):
         super().__init__()
         self.loss = nn.MSELoss(reduction=reduction)
-    
+
     def forward(self, inp, ref):
         return self.loss(inp, ref)
 
@@ -126,7 +126,7 @@ class RelativisticGANLoss(nn.Module):
             loss_fake_item = loss_fake.item()
             loss_tot_item = (loss_real_item + loss_fake_item) / 2.
             return loss_tot_item, loss_real_item, loss_fake_item
-            
+
         elif mode == 'dis':
             # fake_pred must be in front of real_pred, so that dis is only used once
             fake_pred_d = dis(inp.detach()).detach()
@@ -166,6 +166,7 @@ class _VGGFeatureExtractor(nn.Module):
             will be removed. Default: False.
         pooling_stride (int): The stride of max pooling operation. Default: 2.
     """
+
     def __init__(
             self,
             layer_name_list,
@@ -304,6 +305,7 @@ class VGGLoss(nn.Module):
         calculated and the loss will multiplied by the weight.
         Default: 0.
     """
+
     def __init__(
             self,
             vgg_type='vgg19',
@@ -318,7 +320,7 @@ class VGGLoss(nn.Module):
             layer_weights = {'conv5_4': 1.0}
         self.perceptual_weight = perceptual_weight
         self.style_weight = style_weight
-        
+
         self.layer_weights = layer_weights
 
         self.vgg = _VGGFeatureExtractor(

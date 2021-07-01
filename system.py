@@ -61,6 +61,7 @@ class CUDATimer:
     """
     https://discuss.pytorch.org/t/how-to-measure-time-in-pytorch/26964
     """
+
     def __init__(self):
         self.inter_lst = None
 

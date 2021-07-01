@@ -15,6 +15,7 @@ from .deep_learning import return_optimizer, return_loss_func, return_scheduler
 
 class BaseAlg:
     """A basis class for deep-learning algorithms."""
+
     def __init__(self, opts_dict, model_cls, if_train, if_dist):
         super().__init__()
 
@@ -191,7 +192,8 @@ class BaseAlg:
                 self.sched_lst[stage][group] = sched_
 
     def load_state(self, ckp_load_path, if_load_net=True, if_load_optim=False, if_load_sched=False, if_dist=True):
-        states = torch.load(ckp_load_path, map_location='cpu')  # load on cpu to save memory. https://pytorch.org/docs/stable/generated/torch.load.html#torch.load
+        states = torch.load(ckp_load_path,
+                            map_location='cpu')  # load on cpu to save memory. https://pytorch.org/docs/stable/generated/torch.load.html#torch.load
 
         if if_load_net:  # load network
             for subnet in self.model.net:
@@ -233,7 +235,8 @@ class BaseAlg:
                     state_dict = states['optim'][stage][group]
                     self.optim_lst[stage][group].load_state_dict(state_dict)
 
-                    for state in self.optim_lst[stage][group].state.values():  # although model is loaded on cpu, the optim and sched should be loaded on gpu
+                    for state in self.optim_lst[stage][
+                        group].state.values():  # although model is loaded on cpu, the optim and sched should be loaded on gpu
                         for k, v in state.items():
                             if torch.is_tensor(v):
                                 state[k] = v.cuda()

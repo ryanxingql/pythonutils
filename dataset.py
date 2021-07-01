@@ -59,6 +59,7 @@ def _augment(img_lst, if_flip=True, if_rot=True):
     Flipping is applied both x-axis and y-axis.
     Rotation can be 0, 90, 180 or 270 degrees.
     """
+
     def _main(img):
         if if_flip:
             cv2.flip(img, -1, img)  # in-place
@@ -74,7 +75,7 @@ def _augment(img_lst, if_flip=True, if_rot=True):
         0,  # 90 degrees
         1,  # 180 degrees
         2,  # 270 degrees
-        ]
+    ]
     )
     img_lst = [_main(img) for img in img_lst]
     if len(img_lst) == 1:
@@ -87,6 +88,7 @@ def _totensor(img_lst, if_bgr2rgb=True, if_float32=True):
     
     List in, list out; ndarray in, ndarray out.
     """
+
     def _main(img):
         if if_bgr2rgb:
             img = bgr2rgb(img)
@@ -122,6 +124,7 @@ class DistSampler(Sampler):
         rank (int | None): Rank of the current process within num_replicas.
         ratio (int): Enlarging ratio.
     """
+
     def __init__(self, ds_size, num_replicas=None, rank=None, ratio=1):
         # do not & need not super the init of Sampler
 
@@ -173,8 +176,8 @@ def create_dataloader(if_train, dataset, num_worker=None, batch_size=None, sampl
         if sampler is None:
             dataloader_args['shuffle'] = True
         dataloader_args['worker_init_fn'] = partial(
-            _worker_init_fn, 
-            num_workers=num_worker, 
+            _worker_init_fn,
+            num_workers=num_worker,
             rank=rank,
             seed=seed
         )
@@ -212,6 +215,7 @@ def _worker_init_fn(worker_id, num_workers, rank, seed):
 
 class CPUPrefetcher:
     """CPU pre-fetcher."""
+
     def __init__(self, loader):
         self.ori_loader = loader
         self.loader = iter(loader)
@@ -274,6 +278,7 @@ class DiskIODataset(Dataset):
     max_num: clip the dataset.
     if_train: if True, crop the images.
     """
+
     def __init__(self, gt_path, lq_path, if_train, max_num=-1, start_idx=0, aug=None, center_crop=None, padding=None):
         super().__init__()
 
@@ -296,11 +301,11 @@ class DiskIODataset(Dataset):
 
         lq_lst = sorted(list(self.lq_path.glob('*.png')))
         if max_num != -1:
-            lq_lst = lq_lst[start_idx:start_idx+max_num]  # default start_idx is 0
+            lq_lst = lq_lst[start_idx:start_idx + max_num]  # default start_idx is 0
         else:
             lq_lst = lq_lst[start_idx:]
         self.im_num = len(lq_lst)
-        
+
         for idx, lq_path in enumerate(lq_lst):
             name = lq_path.stem  # no .png
             gt_path = self.gt_path / (name + '.png') if self.gt_path is not None else None

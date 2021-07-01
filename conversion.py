@@ -88,14 +88,13 @@ def rgb2bgr(im):
     return im
 """
 
-
 # Color space conversion
 
 mat1 = np.array(
     [
-        [65.481,  128.553,   24.966],
-        [-37.797,  -74.203,  112.],
-        [112.,  -93.786,  -18.214],
+        [65.481, 128.553, 24.966],
+        [-37.797, -74.203, 112.],
+        [112., -93.786, -18.214],
     ]
 ) / 225.
 
@@ -112,7 +111,7 @@ def rgb2ycbcr(im):
     """
     im = copy.deepcopy(im)
     im = im.astype(np.float64)
-    
+
     im = im.dot(mat1.T)
     im[:, :, 0] += 16.
     im[:, :, [1, 2]] += 128.
@@ -128,7 +127,7 @@ def bgr2ycbcr(im):
     """
     im = copy.deepcopy(im)
     im = im.astype(np.float64)
-    
+
     im = bgr2rgb(im)
     im = rgb2ycbcr(im)
 
@@ -146,7 +145,7 @@ def ycbcr2rgb(im):
     """
     im = copy.deepcopy(im)
     im = im.astype(np.float64)
-    
+
     im[:, :, 0] -= 16.
     im[:, :, [1, 2]] -= 128.
     im = im.dot(mat2.T)  # error when using mat2 is smaller
@@ -193,16 +192,16 @@ def yuv420p2444p(y, u, v):
             v_value = v[ih, iw, 0]
 
             u_up[h_top, w_left, 0] = u_value
-            u_up[h_top+1, w_left, 0] = u_value
-            u_up[h_top, w_left+1, 0] = u_value
-            u_up[h_top+1, w_left+1, 0] = u_value
-            
+            u_up[h_top + 1, w_left, 0] = u_value
+            u_up[h_top, w_left + 1, 0] = u_value
+            u_up[h_top + 1, w_left + 1, 0] = u_value
+
             v_up[h_top, w_left, 0] = v_value
-            v_up[h_top+1, w_left, 0] = v_value
-            v_up[h_top, w_left+1, 0] = v_value
-            v_up[h_top+1, w_left+1, 0] = v_value
+            v_up[h_top + 1, w_left, 0] = v_value
+            v_up[h_top, w_left + 1, 0] = v_value
+            v_up[h_top + 1, w_left + 1, 0] = v_value
     yuv444p_im = np.concatenate((y, u_up, v_up), axis=2)
-    
+
     return yuv444p_im
 
 
@@ -239,7 +238,7 @@ def import_yuv(
 
     y_size, u_size, v_size = h * w, hh * ww, hh * ww
     blk_size = y_size + u_size + v_size
-    
+
     # init
     y_seq = np.zeros((tot_frm, h, w), dtype=np.uint8)
     u_seq = None
@@ -275,7 +274,7 @@ def dict2str(input_dict, indent=0):
     for k, v in input_dict.items():
         if isinstance(v, dict):  # still a dict
             msg += indent_msg + k + ':[\n'
-            msg += dict2str(v, indent+2)
+            msg += dict2str(v, indent + 2)
             msg += indent_msg + '  ]\n'
         else:  # the last level
             msg += indent_msg + k + ': ' + str(v) + '\n'

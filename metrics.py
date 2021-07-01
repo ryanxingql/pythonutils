@@ -3,7 +3,6 @@ import numpy as np
 from scipy import stats
 import torch.nn as nn
 
-
 # Criteria
 
 crit_lst = ['PSNR', 'LPIPS']
@@ -20,6 +19,7 @@ def return_crit_func(name, opts):
 
 class PSNR(nn.Module):
     """Input tensor. Return a float."""
+
     def __init__(self):
         super().__init__()
 
@@ -40,6 +40,7 @@ class LPIPS(nn.Module):
 
     https://github.com/richzhang/PerceptualSimilarity
     """
+
     def __init__(self, net='alex', if_spatial=False, if_cuda=True):
         super().__init__()
         import lpips
@@ -78,6 +79,7 @@ class LPIPS(nn.Module):
 
 class PCC:
     """Pearson correlation coefficient."""
+
     def __init__(self):
         self.help = (
             'Pearson correlation coefficient measures linear correlation '
