@@ -1,6 +1,6 @@
 # Python Utilities
 
-Utilities based on Python 3, PyTorch and OpenCV-Python.
+Python toolbox based on Python 3, PyTorch and OpenCV-Python.
 
 :notebook: [[Wiki]](https://github.com/RyanXingQL/PythonUtils/wiki)
 
@@ -8,7 +8,7 @@ Utilities based on Python 3, PyTorch and OpenCV-Python.
 
 ## 0. Archive
 
-- v2
+- v2: add new functions; improve efficiency; not compatible with v1.
 - [v1](https://github.com/RyanXingQL/PythonUtils/tree/2d339029cd97f2a4acba288869bcc13f7daaf7de): the first formal version.
 
 ## 1. Content
