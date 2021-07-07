@@ -1,10 +1,15 @@
-# Python Utils
+# Python Utilities
 
-Utilities based on PYTHON 3, TORCH and OPENCV.
+Utilities based on Python 3, PyTorch and OpenCV-Python.
 
-Current version: [v2]; archived version: [[v1]](https://github.com/RyanXingQL/PythonUtils/tree/2d339029cd97f2a4acba288869bcc13f7daaf7de)
+:notebook: [[Wiki]](https://github.com/RyanXingQL/PythonUtils/wiki)
 
 :e-mail: Feel free to contact: `ryanxingql@gmail.com`.
+
+## 0. Archive
+
+- v2
+- [v1](https://github.com/RyanXingQL/PythonUtils/tree/2d339029cd97f2a4acba288869bcc13f7daaf7de): the first formal version.
 
 ## 1. Content
 
@@ -16,16 +21,14 @@ Current version: [v2]; archived version: [[v1]](https://github.com/RyanXingQL/Py
 - **network**: a basis class of deep-learning networks.
 - **system**: common-used tools for system manipulation, e.g., return formatted time data.
 
+Besides, there are some other common-used tools in `individual.py` that are not included in this package.
+
 ## 2. Principle
 
 - In default, an image is a NUMPY array with the size being `(H W C)` and the data type being `np.uint8`.
 - In default, an image input is first copied then processed; a tensor input is `[.cpu()].detach().clone()` then processed.
 
-## 3. Learn More
-
-If you want to learn more about this repository, check [here](https://github.com/RyanXingQL/PythonUtils/wiki/Learn-More).
-
-## 4. License
+## 3. License
 
 If you find this repository helpful, you may cite:
 
@@ -34,7 +37,7 @@ If you find this repository helpful, you may cite:
   author = {Qunliang Xing},
   title = {Python Utils},
   howpublished = "\url{https://github.com/RyanXingQL/PythonUtils}",
-  year = {2021}, 
+  year = {2021},
   note = "[Online; accessed 11-April-2021]"
 }
 ```
