@@ -21,7 +21,7 @@ Python toolbox based on Python 3, PyTorch and OpenCV-Python.
 - **network**: a basis class of deep-learning networks.
 - **system**: common-used tools for system manipulation, e.g., return formatted time data.
 
-Besides, there are some other common-used tools in `individual.py` that are not included in this package.
+Besides, there are some other useful tools in `./individual/` that are not included in `./__init__.py`.
 
 ## 2. Principle
 
