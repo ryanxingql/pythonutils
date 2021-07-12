@@ -30,6 +30,8 @@ Besides, there are some other useful tools in `./individual/` that are not inclu
 
 ## 3. License
 
+We adopt Apache License v2.0. For other licenses, please refer to [BasicSR](https://github.com/xinntao/BasicSR/tree/master/LICENSE).
+
 If you find this repository helpful, you may cite:
 
 ```tex
