@@ -3,58 +3,9 @@ import time
 import shutil
 import random
 import logging
-import argparse
 
-import yaml
 import torch
 import numpy as np
-
-
-# Arguments & logging
-
-def _str2bool(v):
-    if isinstance(v, bool):
-        return v
-    if v.lower() in ('yes', 'true', 't', 'y', '1'):
-        return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
-        return False
-    else:
-        raise argparse.ArgumentTypeError('BOOLEAN VALUE EXPECTED.')
-
-
-def arg2dict():
-    """Receives args by argparse and YAML -> return dict."""
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        '--opt', '-opt', type=str, default='opts/opt.yml',
-        help='path to option YAML file.'
-    )
-    parser.add_argument(
-        '--case', '-case', type=str, default='v0.0.0',
-        help='specified case in YML.'
-    )
-    parser.add_argument(
-        '--note', '-note', type=str, default='hello world!',
-        help='unused; just FYI.'
-    )
-    parser.add_argument(
-        '--delete_archive', '-del', type=_str2bool, default=False,
-        help='delete archived experimental directories.'
-    )
-    parser.add_argument(
-        '--local_rank', type=int, default=0,
-        help='reserved for DDP.'
-    )
-    args = parser.parse_args()
-
-    with open(args.opt, 'r') as fp:
-        opts_dict = yaml.load(fp, Loader=yaml.FullLoader)
-        opts_dict = opts_dict[args.case]
-
-    opts_aux_dict = dict(rank=args.local_rank, note=args.note, if_del_arc=args.delete_archive)
-
-    return opts_dict, opts_aux_dict
 
 
 class CUDATimer:

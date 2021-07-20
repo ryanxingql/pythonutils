@@ -5,7 +5,7 @@ from .dataset import DistSampler, create_dataloader, CPUPrefetcher, DiskIODatase
 from .deep_learning import init_dist, return_loss_func, return_optimizer, return_scheduler
 from .metrics import PCC, return_crit_func
 from .network import BaseNet
-from .system import create_logger, CUDATimer, get_timestr, Timer, Recorder, arg2dict, mkdir_archived, set_random_seed
+from .system import create_logger, CUDATimer, get_timestr, Timer, Recorder, mkdir_archived, set_random_seed
 
 __all__ = [
     'BaseAlg',
@@ -15,5 +15,5 @@ __all__ = [
     'init_dist', 'return_loss_func', 'return_optimizer', 'return_scheduler',
     'PCC', 'return_crit_func',
     'BaseNet',
-    'create_logger', 'CUDATimer', 'get_timestr', 'Timer', 'Recorder', 'arg2dict', 'mkdir_archived', 'set_random_seed',
+    'create_logger', 'CUDATimer', 'get_timestr', 'Timer', 'Recorder', 'mkdir_archived', 'set_random_seed',
 ]
