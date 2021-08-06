@@ -9,6 +9,7 @@ from cv2 import cv2
 from torch.utils.data import Dataset
 from torch.utils.data.sampler import Sampler
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 from .conversion import bgr2rgb
 
@@ -225,6 +226,17 @@ class CPUPrefetcher:
             return next(self.loader)
         except StopIteration:
             return None
+
+    def skip_front(self, niter, verbose=False):
+        if verbose:
+            pbar = tqdm(total=niter, ncols=80)
+            for _ in range(niter):
+                next(self.loader)
+                pbar.update()
+            pbar.close()
+        else:
+            for _ in range(niter):
+                next(self.loader)
 
     def reset(self):
         self.loader = iter(self.ori_loader)
