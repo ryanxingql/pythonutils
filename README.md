@@ -35,7 +35,7 @@ We adopt Apache License v2.0. For other licenses, please refer to [BasicSR](http
 If you find this repository helpful, you may cite:
 
 ```tex
-@misc{PythonUtils_xing_2021,
+@misc{2021xing,
   author = {Qunliang Xing},
   title = {Python Utils},
   howpublished = "\url{https://github.com/RyanXingQL/PythonUtils}",
