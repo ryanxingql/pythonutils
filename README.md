@@ -2,14 +2,14 @@
 
 Python toolbox based on Python 3, PyTorch and OpenCV-Python.
 
-:notebook: [[Wiki]](https://github.com/RyanXingQL/PythonUtils/wiki)
+:notebook: [[Wiki]](https://github.com/ryanxingql/pythonutils/wiki)
 
 :e-mail: Feel free to contact: `ryanxingql@gmail.com`.
 
 ## 0. Archive
 
 - v2: add new functions; improve efficiency; not compatible with v1.
-- [v1](https://github.com/RyanXingQL/PythonUtils/tree/2d339029cd97f2a4acba288869bcc13f7daaf7de): the first formal version.
+- [v1](https://github.com/ryanxingql/pythonutils/tree/2d339029cd97f2a4acba288869bcc13f7daaf7de): the first formal version.
 
 ## 1. Content
 
@@ -38,7 +38,7 @@ If you find this repository helpful, you may cite:
 @misc{2021xing,
   author = {Qunliang Xing},
   title = {Python Utils},
-  howpublished = "\url{https://github.com/RyanXingQL/PythonUtils}",
+  howpublished = "\url{https://github.com/ryanxingql/pythonutils}",
   year = {2021},
   note = "[Online; accessed 11-April-2021]"
 }
