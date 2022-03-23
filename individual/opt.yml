@@ -1,4 +1,0 @@
-plot_curve_from_log:
-  log_fp: /home/xql/data/pycharm/PowerQE/exp/esrgan_div2k_qp37/log_train.log
-  target_criteria: LPIPS  # PSNR, LPIPS
-  save_dir: ~  # relative path; default: ./logs/

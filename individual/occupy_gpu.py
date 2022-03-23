@@ -1,17 +1,25 @@
-"""
-env
-    python -m pip install pynvml torch
+"""Occupy one gpu.
+python main_gpu.py -ir 1 -g 0
 
-run
-    python main_gpu.py -ir 1 -g 0
+Input:
+gpu
+upper_bound_ratio: maximal memory used ratio after occupation.
+lower_bound_ratio: maximal memory used ratio to trigger occupation.
+if_run: run computation and boost up the gpu utility.
+gap_res: if not run, sleep for a while before the next check.
 
-occupy one gpu per programme.
+
+Requirement:
+torch
+see utils_gpu
 """
 import time
+import argparse
+
 import torch
 import torch.nn as nn
-import argparse
-from pynvml import *
+
+import utils_gpu
 
 
 class NeuralNetwork(nn.Module):
@@ -28,20 +36,7 @@ class NeuralNetwork(nn.Module):
         x = self.model(x)
 
 
-def check_mem(gpu):
-    """
-    返回总 GPU 和可用 GPU 显存（Byte）。输入 gpu 为 visible gpu 节点序号。
-    NVIDIA 或 gpustat 显示的是 MiB，即除以 1024^3。
-    """
-    info = nvmlDeviceGetMemoryInfo(nvmlDeviceGetHandleByIndex(gpu))
-    _ratio_used = info.used / info.total
-    return info.total, info.used, _ratio_used
-
-
-nvmlInit()
-
 parser = argparse.ArgumentParser()
-parser.add_argument('--string', '-str', type=str, default='useless')  # 无意义，装模做样
 parser.add_argument('--gpu', '-g', type=int, default=0)
 parser.add_argument('--upper_bound_ratio', '-ubr', type=float, default=0.9)  # 创建 tensor 后，总比例不能高于此经验上限，否则重新创建
 parser.add_argument('--lower_bound_ratio', '-lbr', type=float, default=0.85)  # 如果低于下限，那么创建 tensor
@@ -49,6 +44,7 @@ parser.add_argument('--lower_bound_ratio', '-lbr', type=float, default=0.85)  # 
 parser.add_argument('--if_run', '-ir', type=int, default=0)  # 如果有 tensor，可以跑
 parser.add_argument('--gap_res', '-gr', type=int, default=30)
 args = parser.parse_args()
+
 assert args.upper_bound_ratio >= args.lower_bound_ratio, 'ubr < lbr!'
 assert args.if_run in [0, 1], 'wrong if_run!'
 
@@ -59,21 +55,21 @@ if_t_exist = False  # tensor 是否已创建
 stat_pre = -1
 
 while True:
-    total, used, ratio_used = check_mem(args.gpu)
+    total, used, ratio_used = utils_gpu.check_gpu_memory(args.gpu)
 
     # 若显存不足下限，创建 tensor
     if ratio_used < args.lower_bound_ratio:
         if if_t_exist:  # 之前存在 tensor，之后会重建，因此 used 无效，要先删掉 tensor 再重算
             del tensor
             torch.cuda.empty_cache()
-            total, used, ratio_used = check_mem(args.gpu)
+            total, used, ratio_used = utils_gpu.check_gpu_memory(args.gpu)
         t_volume = int(total * args.lower_bound_ratio - used) // 1024 // 1024  # Byte -> MiB
 
         tensor = torch.cuda.FloatTensor(t_volume, 1, 256, 1024)
         if_t_exist = True
 
         while True:  # 真实占用可能超过上限；为防止溢出，要根据实际情况调整 tensor 大小
-            total, used, ratio_used = check_mem(args.gpu)
+            total, used, ratio_used = utils_gpu.check_gpu_memory(args.gpu)
             if ratio_used > args.upper_bound_ratio:
                 del tensor
                 torch.cuda.empty_cache()
@@ -84,7 +80,7 @@ while True:
 
     # 输出信息
     timestr = time.strftime('%Y%m%d_%H%M%S', time.localtime())
-    _, _, ratio_used = check_mem(args.gpu)
+    _, _, ratio_used = utils_gpu.check_gpu_memory(args.gpu)
     ratioint = int(ratio_used * 100)
     if if_t_exist:
         if args.if_run == 1:
