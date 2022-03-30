@@ -23,6 +23,10 @@ Python toolbox based on Python 3, PyTorch and OpenCV-Python.
 
 Besides, there are some other useful tools in `/individual/` that are not included in `/__init__.py`.
 
+- `check_fetch_latest_model.py`: check and fetch latest model from another machine by SSH.
+- `crop_two_images.py`: crop two images together according to the given axis.
+- `occupy_gpu.py`: occupy GPU memory and/or utility of one GPU.
+
 ## 2. Principle
 
 - In default, an image is a NUMPY array with the size being `(H W C)` and the data type being `np.uint8`.

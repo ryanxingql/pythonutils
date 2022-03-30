@@ -1,4 +1,4 @@
-"""Occupy one gpu.
+"""Occupy GPU memory and/or utility of one GPU.
 python main_gpu.py -ir 1 -g 0
 
 Input:

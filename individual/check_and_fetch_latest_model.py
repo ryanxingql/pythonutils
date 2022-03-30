@@ -1,4 +1,4 @@
-"""Check and fetch lastest model from a training machine.
+"""Check and fetch latest model from another machine by SSH.
 python check_and_fetch_latest_model.py -gpus 0 1 2 3
 
 Please add the SSH public key of this machine to the SSH authorized_keys file of the training machine.
