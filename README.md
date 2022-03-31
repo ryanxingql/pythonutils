@@ -25,6 +25,7 @@ Besides, there are some other useful tools in `/individual/` that are not includ
 
 - `check_fetch_latest_model.py`: check and fetch latest model from another machine by SSH.
 - `crop_two_images.py`: crop two images together according to the given axis.
+- `fetch_remote_tf.py`: fetch remote log and tensorboard files.
 - `occupy_gpu.py`: occupy GPU memory and/or utility of one GPU.
 
 ## 2. Principle
