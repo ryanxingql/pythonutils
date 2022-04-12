@@ -1,5 +1,7 @@
 """Occupy GPU memory and/or utility of one GPU.
-python main_gpu.py -ir 1 -g 0
+python occupy_gpu.py -ir 1 -g 0
+
+Strongly suggest to copy, rename then run this programme.
 
 Input:
 gpu
@@ -8,9 +10,8 @@ lower_bound_ratio: maximal memory used ratio to trigger occupation.
 if_run: run computation and boost up the gpu utility.
 gap_res: if not run, sleep for a while before the next check.
 
-
 Requirement:
-torch
+torch: conda install pytorch torchvision torchaudio cudatoolkit=11.3 -c pytorch
 see utils_gpu
 """
 import time
