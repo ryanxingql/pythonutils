@@ -1,5 +1,5 @@
 """Crop all input images together.
-python crop_two_images.py -img_paths <img1-path> <img2-path> ...
+python crop_two_images.py -img-paths <img1-path> <img2-path> ...
 
 Cropping box is determined interactively.
 """
@@ -44,12 +44,12 @@ def show_imgs(img_list, cap_list):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-img_paths', type=str, nargs='+')
-parser.add_argument('-save_dir', type=str, default='log')
-parser.add_argument('-start_h', type=int, default=0)
-parser.add_argument('-start_w', type=int, default=0)
-parser.add_argument('-crop_h', type=int, default=100)
-parser.add_argument('-crop_w', type=int, default=100)
+parser.add_argument('-img-paths', type=str, nargs='+')
+parser.add_argument('-save-dir', type=str, default='log')
+parser.add_argument('-start-h', type=int, default=0)
+parser.add_argument('-start-w', type=int, default=0)
+parser.add_argument('-crop-h', type=int, default=100)
+parser.add_argument('-crop-w', type=int, default=100)
 args = parser.parse_args()
 
 if not osp.exists(args.save_dir):
