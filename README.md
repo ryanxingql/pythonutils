@@ -21,13 +21,6 @@ Python toolbox based on Python 3, PyTorch and OpenCV-Python.
 - **network**: a basis class of deep-learning networks.
 - **system**: common-used tools for system manipulation, e.g., return formatted time data.
 
-Besides, there are some other useful tools in `/individual/` that are not included in `/__init__.py`.
-
-- `check_fetch_latest_model.py`: check and fetch latest model from another machine by SSH.
-- `crop_images.py`: crop all input images together.
-- `fetch_remote_tf.py`: fetch remote log and tensorboard files.
-- `occupy_gpu.py`: occupy GPU memory and/or utility of one GPU.
-
 ## 2. Principle
 
 - In default, an image is a NUMPY array with the size being `(H W C)` and the data type being `np.uint8`.
